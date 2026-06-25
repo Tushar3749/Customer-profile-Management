@@ -1,0 +1,1554 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>কাস্টমার কল লগ প্রোফাইল</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  /* Design tokens */
+  --color-primary: #ea580c;
+  --color-primary-hover: #c2410c;
+  --color-primary-light: #fff7ed;
+  --color-primary-border: #fed7aa;
+  --color-bg: #fafaf9;
+  --color-surface: #ffffff;
+  --color-border: #e7e5e4;
+  --color-text: #1c1917;
+  --color-text-muted: #78716c;
+  --color-success: #16a34a;
+  --color-success-light: #f0fdf4;
+  --color-success-border: #bbf7d0;
+  --color-warning: #d97706;
+  --color-warning-light: #fffbeb;
+  --color-warning-border: #fde68a;
+  --color-danger: #dc2626;
+  --color-danger-light: #fef2f2;
+  --color-danger-border: #fecaca;
+  --color-info: #2563eb;
+  --color-info-light: #eff6ff;
+  --color-info-border: #bfdbfe;
+
+  /* Semantic aliases — keep old names working */
+  --bg: var(--color-bg);
+  --panel: var(--color-surface);
+  --ink: var(--color-text);
+  --ink-soft: var(--color-text-muted);
+  --line: var(--color-border);
+  --primary: var(--color-primary);
+  --primary-soft: var(--color-primary-light);
+  --green: var(--color-success);
+  --green-soft: var(--color-success-light);
+  --amber: var(--color-warning);
+  --amber-soft: var(--color-warning-light);
+  --red: var(--color-danger);
+  --red-soft: var(--color-danger-light);
+  --blue: var(--color-info);
+  --blue-soft: var(--color-info-light);
+  --gray-soft: #f5f5f4;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-lift: 0 8px 20px rgba(0,0,0,.10), 0 4px 8px rgba(0,0,0,.05);
+
+  /* Transition */
+  --transition: .15s ease;
+
+  /* Fonts */
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: 'Noto Sans Bengali', "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+header { background: var(--primary); color: #fff; padding: 16px 28px 0; }
+.header-top { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+header h1 { font-size: 19px; font-weight: 700; margin: 0; letter-spacing: .2px; flex: 1; }
+
+/* ── Logo ─────────────────────────────────────────────────────────────────── */
+.logo-area { flex-shrink: 0; border-radius: 8px; transition: outline var(--transition); }
+.logo-area.drag-over { outline: 3px solid rgba(255,255,255,.9); outline-offset: 2px; }
+.logo-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 54px; height: 44px; border: 2px dashed rgba(255,255,255,.45); border-radius: 6px; font-size: 9.5px; color: rgba(255,255,255,.7); text-align: center; line-height: 1.3; cursor: pointer; transition: border-color var(--transition), color var(--transition); }
+.logo-placeholder:hover { border-color: rgba(255,255,255,.85); color: #fff; }
+.logo-wrap { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
+.logo-wrap img { height: 44px; width: auto; max-width: 120px; display: block; border-radius: 4px; object-fit: contain; }
+.logo-change-overlay { display: none; position: absolute; inset: 0; background: rgba(0,0,0,.45); border-radius: 4px; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; text-align: center; line-height: 1.3; cursor: pointer; }
+.logo-wrap:hover .logo-change-overlay { display: flex; }
+
+/* ── Tabs ─────────────────────────────────────────────────────────────────── */
+.tab-nav { display: flex; gap: 2px; }
+.tab-nav button { padding: 10px 28px; border: none; background: transparent; color: rgba(255,255,255,.7); font-size: 14px; font-weight: 500; font-family: var(--sans); cursor: pointer; border-bottom: 3px solid transparent; transition: color var(--transition), border-color var(--transition); white-space: nowrap; min-height: 44px; }
+.tab-nav button.active { color: #fff; border-bottom-color: #fff; }
+.tab-nav button:hover:not(.active) { color: rgba(255,255,255,.9); }
+
+main { max-width: 1440px; margin: 0 auto; padding: 28px 32px 64px; }
+.pane { display: none; }
+.pane.active { display: block; }
+#pane-search { }
+
+/* ── Search bar ───────────────────────────────────────────────────────────── */
+.search-row { display: flex; gap: 10px; margin: 24px 0 18px; }
+.search-row input { flex: 1; padding: 13px 16px; border: 1.5px solid var(--line); border-radius: var(--radius-md); font-size: 15px; font-family: var(--mono); background: var(--panel); color: var(--ink); transition: border-color var(--transition), box-shadow var(--transition); min-height: 44px; }
+.search-row input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(234,88,12,.15); }
+.search-row button { padding: 13px 30px; border: none; border-radius: var(--radius-md); background: var(--primary); color: #fff; font-weight: 600; font-size: 14.5px; font-family: var(--sans); cursor: pointer; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; transition: background var(--transition), transform var(--transition); }
+.search-row button:hover:not(:disabled) { background: var(--color-primary-hover); transform: scale(1.02); }
+.search-row button:active:not(:disabled) { transform: scale(0.98); }
+.search-row button:disabled { background: #d4a989; cursor: default; transform: none; }
+#state-msg { color: var(--ink-soft); font-size: 14px; margin-bottom: 16px; }
+#state-msg.error { color: var(--red); }
+
+/* ── Spinner ──────────────────────────────────────────────────────────────── */
+.btn-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Groups ───────────────────────────────────────────────────────────────── */
+.group { border-radius: var(--radius-lg); margin-bottom: 20px; border: 1px solid; }
+.group-header { display: flex; align-items: center; gap: 10px; padding: 14px 18px 12px; }
+.group-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.group-title { font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .9px; }
+.group-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 14px; }
+
+.group-customer { background: #eff6ff; border-color: #bfdbfe; }
+.group-customer .group-dot { background: #2563eb; }
+.group-customer .group-title { color: #1e40af; }
+
+.group-calls { background: var(--color-primary-light); border-color: var(--color-primary-border); }
+.group-calls .group-dot { background: var(--color-primary); }
+.group-calls .group-title { color: var(--color-primary-hover); }
+
+.group-orders { background: var(--color-success-light); border-color: var(--color-success-border); }
+.group-orders .group-dot { background: var(--color-success); }
+.group-orders .group-title { color: #15803d; }
+
+.group-risk { background: var(--color-danger-light); border-color: var(--color-danger-border); }
+.group-risk .group-dot { background: var(--color-danger); }
+.group-risk .group-title { color: #b91c1c; }
+
+.group-remarks { background: var(--color-bg); border-color: var(--color-border); }
+.group-remarks .group-dot { background: #78716c; }
+.group-remarks .group-title { color: #57534e; }
+
+/* ── Stat cards ───────────────────────────────────────────────────────────── */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.hero-strip { grid-template-columns: repeat(4, 1fr); margin-bottom: 20px; }
+.stat-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 14px 16px; transition: transform var(--transition), box-shadow var(--transition); }
+.stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); }
+.stat-card .num { font-size: 22px; font-weight: 700; font-family: var(--mono); line-height: 1.1; }
+.stat-card .label { font-size: 12px; color: var(--ink-soft); margin-top: 4px; }
+.stat-card .sub { font-size: 11px; color: var(--ink-soft); margin-top: 2px; font-family: var(--mono); }
+
+/* ── Generic section panel ────────────────────────────────────────────────── */
+.section { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 18px 18px 10px; box-shadow: var(--shadow-sm); transition: box-shadow var(--transition); }
+.section:hover { box-shadow: var(--shadow-lift); }
+.section h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--ink-soft); margin: 0 0 12px; font-weight: 700; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 8px; }
+.chip { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--gray-soft); font-family: var(--mono); }
+
+/* ── Status badges ────────────────────────────────────────────────────────── */
+.sb { font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 5px; white-space: nowrap; }
+.st-green { background: var(--green-soft); color: var(--green); }
+.st-amber { background: var(--amber-soft); color: var(--amber); }
+.st-red   { background: var(--red-soft);   color: var(--red); }
+.st-blue  { background: var(--blue-soft);  color: var(--blue); }
+.st-gray  { background: var(--gray-soft);  color: var(--ink-soft); }
+
+/* ── Segment badge ────────────────────────────────────────────────────────── */
+.seg-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px 5px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 700; letter-spacing: .2px; }
+.seg-hv    { background: #fef9c3; color: #713f12; }
+.seg-risk  { background: var(--red-soft); color: var(--red); }
+.seg-loyal { background: var(--green-soft); color: var(--green); }
+.seg-freq  { background: var(--amber-soft); color: var(--amber); }
+.seg-new   { background: var(--blue-soft); color: var(--blue); }
+.seg-reg   { background: var(--gray-soft); color: var(--ink-soft); }
+
+/* ── 2-col layout ─────────────────────────────────────────────────────────── */
+.col2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 0; }
+
+/* ── Wide 2-col: side-by-side charts on desktop ───────────────────────────── */
+.wide-grid-2 { display: grid; grid-template-columns: 1fr; gap: 14px; }
+
+/* ── Chart wrappers ───────────────────────────────────────────────────────── */
+.ch-wrap { position: relative; height: 220px; }
+
+/* ── Risk panel ───────────────────────────────────────────────────────────── */
+.risk-panel { background: rgba(255,255,255,.85); border: 1px solid var(--color-danger-border); border-radius: var(--radius-md); padding: 18px 18px 10px; box-shadow: var(--shadow-sm); }
+.risk-panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--red); margin: 0 0 12px; font-weight: 700; }
+.risk-num-big { font-size: 32px; font-weight: 800; font-family: var(--mono); color: var(--red); }
+.risk-label { font-size: 12px; color: var(--red); margin-top: 2px; }
+.risk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 10px; margin-bottom: 10px; }
+.risk-card { background: rgba(255,255,255,.8); border: 1px solid var(--color-danger-border); border-radius: var(--radius-sm); padding: 12px 14px; }
+
+/* ── Small table ──────────────────────────────────────────────────────────── */
+.mini-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 6px; }
+.mini-tbl th { text-align: left; padding: 6px 8px; background: var(--bg); color: var(--ink-soft); font-weight: 600; border-bottom: 1px solid var(--line); }
+.mini-tbl td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.mini-tbl tr:last-child td { border-bottom: none; }
+.mini-tbl tr:hover td { background: var(--primary-soft); }
+.due-red { color: var(--red); font-weight: 600; font-family: var(--mono); }
+.mono { font-family: var(--mono); }
+
+/* ── Timeline ─────────────────────────────────────────────────────────────── */
+.timeline { position: relative; padding-left: 18px; margin-bottom: 6px; }
+.timeline::before { content: ""; position: absolute; left: 4px; top: 6px; bottom: 6px; width: 2px; background: var(--line); }
+.t-item { position: relative; padding: 0 0 16px 16px; }
+.t-item::before { content: ""; position: absolute; left: -19px; top: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--primary); border: 2px solid var(--panel); }
+.t-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 3px; }
+.t-date { font-family: var(--mono); font-size: 12.5px; color: var(--ink-soft); }
+.t-note { font-size: 13.5px; color: var(--ink); margin-top: 2px; }
+.match-tag { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px; }
+.match-yes { background: #d4edda; color: #155724; }
+.match-no  { background: #f8d7da; color: #721c24; }
+details.raw summary { font-size: 11px; color: var(--ink-soft); cursor: pointer; }
+details.raw pre { font-size: 10.5px; background: var(--bg); padding: 6px; border-radius: 5px; overflow-x: auto; margin: 4px 0 0; }
+
+/* ── Micro-bar ────────────────────────────────────────────────────────────── */
+.micro-bar-row { display: flex; align-items: flex-end; gap: 3px; height: 40px; margin-top: 6px; margin-bottom: 2px; }
+.micro-bar { background: var(--primary); border-radius: 2px 2px 0 0; min-width: 8px; transition: height .3s; }
+.micro-bar-label { display: flex; gap: 3px; font-size: 10px; color: var(--ink-soft); flex-wrap: wrap; margin-bottom: 4px; }
+
+/* ── Heatmap tooltip ─────────────────────────────────────────────────────── */
+.hmap-tt { position:fixed; z-index:9999; background:#1c1917; color:#fff; border-radius:7px; padding:8px 12px; font-size:12px; line-height:1.65; pointer-events:none; display:none; max-width:240px; box-shadow:0 4px 18px rgba(0,0,0,.35); }
+.hmap-cell { transition: opacity .1s, transform .1s; }
+.hmap-cell:hover { transform: scale(1.35); z-index: 1; position: relative; }
+
+/* ── Empty hint ───────────────────────────────────────────────────────────── */
+#empty-hint { color: var(--ink-soft); font-size: 14.5px; line-height: 1.6; padding: 30px 4px; }
+
+/* ── Purchase pattern badge ───────────────────────────────────────────────── */
+.pp-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.pp-monthly  { background: #dcfce7; color: #166534; }
+.pp-quarterly { background: #dbeafe; color: #1e40af; }
+.pp-seasonal  { background: #fef9c3; color: #713f12; }
+.pp-new       { background: var(--gray-soft); color: var(--ink-soft); }
+.reorder-tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; background: #fef08a; color: #713f12; margin-left: 6px; white-space: nowrap; }
+
+/* ── Last Order card ──────────────────────────────────────────────────────── */
+.last-order-card { background: var(--panel); border: 1.5px solid var(--primary); border-radius: var(--radius-md); padding: 18px; box-shadow: var(--shadow-sm); }
+.last-order-card h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--primary); margin: 0 0 12px; font-weight: 700; }
+.lo-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.lo-invoice { font-family: var(--mono); font-size: 14px; font-weight: 700; }
+.lo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin: 10px 0; }
+.lo-item { background: var(--bg); border-radius: 7px; padding: 10px 12px; }
+.lo-item .lnum { font-size: 17px; font-weight: 700; font-family: var(--mono); }
+.lo-item .llbl { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
+.prod-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.prod-row:last-child { border-bottom: none; }
+
+/* ── Remarks panel ────────────────────────────────────────────────────────── */
+.remarks-panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 18px 18px 10px; box-shadow: var(--shadow-sm); }
+.remarks-panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--ink-soft); margin: 0 0 12px; font-weight: 700; }
+.ai-summary-box { background: linear-gradient(135deg, var(--primary-soft) 0%, #fff8f4 100%); border: 1.5px solid var(--primary); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; font-size: 13.5px; line-height: 1.6; }
+.ai-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--primary); margin-bottom: 5px; }
+.remark-item { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+.remark-item:last-child { border-bottom: none; }
+.remark-date { font-family: var(--mono); color: var(--ink-soft); min-width: 82px; font-size: 11.5px; padding-top: 1px; }
+.remark-src { font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 3px; white-space: nowrap; height: fit-content; margin-top: 1px; }
+.src-call { background: #dbeafe; color: #1e40af; }
+.src-order { background: #fef9c3; color: #713f12; }
+.src-internal { background: var(--gray-soft); color: var(--ink-soft); }
+.src-return { background: var(--red-soft); color: var(--red); }
+
+/* ── Dashboard ────────────────────────────────────────────────────────────── */
+.dash-loading { text-align: center; padding: 60px 20px; color: var(--ink-soft); font-size: 15px; }
+.dash-loading .spinner { width: 32px; height: 32px; border: 3px solid var(--line); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 16px; }
+.dash-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 12px; margin-bottom: 22px; }
+.dsc { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 16px 18px; transition: transform var(--transition), box-shadow var(--transition); }
+.dsc:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); }
+.dsc .dnum { font-size: 26px; font-weight: 700; font-family: var(--mono); line-height: 1; }
+.dsc .dlbl { font-size: 12px; color: var(--ink-soft); margin-top: 5px; }
+.dsc .dsub { font-size: 11.5px; color: var(--ink-soft); margin-top: 3px; font-family: var(--mono); }
+.chart-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+.chart-panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 18px; transition: box-shadow var(--transition); }
+.chart-panel:hover { box-shadow: var(--shadow-lift); }
+.chart-panel h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--ink-soft); margin: 0 0 12px; font-weight: 700; }
+.toggle-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.tgl { padding: 5px 16px; border-radius: 6px; border: 1.5px solid var(--line); background: transparent; color: var(--ink-soft); font-size: 12.5px; font-family: var(--sans); cursor: pointer; white-space: nowrap; transition: background var(--transition), color var(--transition), border-color var(--transition); }
+.tgl.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.tgl:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
+.err-note { background: var(--red-soft); color: var(--red); border-radius: var(--radius-md); padding: 10px 14px; font-size: 13px; margin-bottom: 16px; }
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  header { padding: 12px 14px 0; }
+  header h1 { font-size: 16px; }
+  .header-top { gap: 10px; margin-bottom: 10px; }
+  .tab-nav button { padding: 9px 14px; font-size: 13px; }
+  main { padding: 16px 12px 48px; }
+  .search-row { flex-direction: column; }
+  .search-row button { width: 100%; }
+  .hero-strip { grid-template-columns: repeat(2, 1fr); }
+  .stat-grid:not(.hero-strip) { grid-template-columns: repeat(2, 1fr); }
+  .col2 { grid-template-columns: 1fr; }
+  .wide-grid-2 { grid-template-columns: 1fr; }
+  .chart-grid-2 { grid-template-columns: 1fr; }
+  .dash-stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .group-body { padding: 0 10px 10px; gap: 10px; }
+  .risk-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 680px) {
+  .col2 { grid-template-columns: 1fr; }
+  .wide-grid-2 { grid-template-columns: 1fr; }
+  .chart-grid-2 { grid-template-columns: 1fr; }
+}
+@media (min-width: 641px) and (max-width: 1024px) {
+  .hero-strip { grid-template-columns: repeat(4, 1fr); }
+}
+@media (min-width: 1025px) {
+  main { padding: 28px 40px 64px; }
+  .hero-strip { grid-template-columns: repeat(4, 1fr); }
+  .wide-grid-2 { grid-template-columns: 1fr 1fr; align-items: stretch; }
+}
+
+/* ── Order heatmap controls ──────────────────────────────────────────────── */
+.ohmap-ctrl-row { display:flex;align-items:center;gap:8px;flex-wrap:wrap; }
+.ohmap-ctrl-row select, .ohmap-ctrl-row input[type=date] { padding:5px 10px;border:1.5px solid var(--line);border-radius:var(--radius-sm);font-size:12.5px;font-family:var(--sans);background:var(--panel);color:var(--ink);cursor:pointer;min-height:34px; }
+.ohmap-ctrl-row select:focus, .ohmap-ctrl-row input[type=date]:focus { outline:none;border-color:var(--primary); }
+.ohmap-load-btn { padding:5px 14px;border:none;border-radius:var(--radius-sm);background:var(--primary);color:#fff;font-size:12.5px;font-family:var(--sans);cursor:pointer;transition:background var(--transition);min-height:34px; }
+.ohmap-load-btn:hover { background:var(--color-primary-hover); }
+
+/* ── Order heatmap day-detail modal ──────────────────────────────────────── */
+.ohmap-overlay { position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeOhmap .15s ease; }
+@keyframes fadeOhmap { from{opacity:0;transform:scale(.97)} to{opacity:1;transform:scale(1)} }
+.ohmap-modal-box { background:var(--panel);border-radius:var(--radius-lg);max-width:760px;width:100%;max-height:85vh;overflow-y:auto;padding:24px 24px 16px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.22); }
+.ohmap-modal-head { display:flex;align-items:center;gap:12px;margin-bottom:14px; }
+.ohmap-modal-head h3 { font-size:16px;font-weight:700;margin:0;flex:1;color:var(--ink); }
+.ohmap-modal-close { border:none;background:var(--gray-soft);border-radius:6px;width:32px;height:32px;cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;color:var(--ink-soft);transition:background var(--transition);flex-shrink:0; }
+.ohmap-modal-close:hover { background:var(--line);color:var(--ink); }
+.ohmap-modal-summary { display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px; }
+.ohmap-mstat { background:var(--color-primary-light);border:1px solid var(--color-primary-border);border-radius:var(--radius-md);padding:12px 14px;text-align:center; }
+.ohmap-mstat .n { font-size:22px;font-weight:700;font-family:var(--mono);color:var(--primary); }
+.ohmap-mstat .l { font-size:11px;color:var(--ink-soft);margin-top:3px; }
+@media (max-width:640px) { .ohmap-modal-box { padding:16px 14px 12px; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div id="logo-area" class="logo-area"></div>
+    <h1>কাস্টমার কল লগ প্রোফাইল</h1>
+  </div>
+  <nav class="tab-nav">
+    <button class="active" onclick="switchTab('search')">কাস্টমার তথ্য খোঁজার টুল</button>
+    <button onclick="switchTab('dashboard')">ড্যাশবোর্ড</button>
+  </nav>
+  <input type="file" id="logo-input" accept=".png,.jpg,.jpeg,.svg" style="display:none">
+</header>
+
+<main>
+
+<!-- ═══════════════ SEARCH PANE ════════════════ -->
+<div id="pane-search" class="pane active">
+  <div class="search-row">
+    <input id="phone-input" type="text" placeholder="ফোন নম্বর লিখুন (যেমনঃ ০১৯৭৩০৭০৯১৭)" autofocus />
+    <button id="search-btn">খুঁজুন</button>
+  </div>
+  <div id="state-msg"></div>
+  <div id="results"></div>
+  <div id="empty-hint">একটি ফোন নম্বর লিখে <strong>'খুঁজুন'</strong> বাটনে চাপ দিন। কাস্টমারের সব তথ্য এখানে দেখানো হবে।</div>
+</div>
+
+<!-- ═══════════════ DASHBOARD PANE ════════════════ -->
+<div id="pane-dashboard" class="pane">
+  <div id="dash-loading" class="dash-loading">
+    <div class="spinner"></div>ড্যাশবোর্ড লোড হচ্ছে (প্রথমবার ~৫০ সেকেন্ড লাগতে পারে)...
+  </div>
+  <div id="dash-error" style="display:none"></div>
+  <div id="dash-content" style="display:none">
+    <div class="dash-stat-grid" id="dash-stats"></div>
+    <div class="chart-grid-2">
+      <div class="chart-panel"><h3>কলের অবস্থা (চার্ট)</h3><div style="position:relative;height:240px"><canvas id="chart-call-status"></canvas></div></div>
+      <div class="chart-panel"><h3>অর্ডারের অবস্থা (চার্ট)</h3><div style="position:relative;height:240px"><canvas id="chart-order-status"></canvas></div></div>
+    </div>
+    <div class="chart-panel" style="margin-bottom:18px" id="order-heatmap-panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+        <h3 style="margin:0">দৈনিক অর্ডার হিটম্যাপ</h3>
+        <div class="ohmap-ctrl-row">
+          <select id="ohmap-preset" onchange="onOhmapPreset(this.value)">
+            <option value="4m">শেষ ৪ মাস</option>
+            <option value="6m">শেষ ৬ মাস</option>
+            <option value="1y">শেষ ১ বছর</option>
+            <option value="custom">কাস্টম তারিখ</option>
+          </select>
+          <span id="ohmap-custom-range" style="display:none;align-items:center;gap:6px;flex-wrap:wrap">
+            <input type="date" id="ohmap-start" />
+            <span style="color:var(--ink-soft);font-size:12px">থেকে</span>
+            <input type="date" id="ohmap-end" />
+            <button class="ohmap-load-btn" onclick="loadOrderHeatmap()">লোড করুন</button>
+          </span>
+        </div>
+      </div>
+      <div id="ohmap-container" style="min-height:60px"></div>
+    </div>
+    <div class="chart-panel" style="margin-bottom:18px">
+      <h3>বেশি কেনা পণ্যসমূহ (শীর্ষ ১০)</h3>
+      <div class="toggle-row">
+        <button class="tgl active" id="btn-qty" onclick="switchProducts('qty')">পরিমাণ অনুযায়ী</button>
+        <button class="tgl" id="btn-rev" onclick="switchProducts('revenue')">আয় অনুযায়ী (৳)</button>
+      </div>
+      <div style="position:relative;height:300px"><canvas id="chart-top-products"></canvas></div>
+    </div>
+    <div class="chart-grid-2">
+      <div class="chart-panel"><h3>জেলা অনুযায়ী (শীর্ষ ১০)</h3><div style="position:relative;height:240px"><canvas id="chart-district"></canvas></div></div>
+      <div class="chart-panel"><h3>পেমেন্ট পদ্ধতি</h3><div style="position:relative;height:200px"><canvas id="chart-payment"></canvas></div></div>
+    </div>
+    <div class="chart-panel"><h3>ডেলিভারি পার্টনারের পারফরমেন্স</h3><div style="position:relative;height:240px"><canvas id="chart-dp"></canvas></div></div>
+  </div>
+</div>
+
+</main>
+
+<!-- ═══════════════ ORDER DAY DETAIL MODAL ════════════════ -->
+<div id="order-day-modal" class="ohmap-overlay" style="display:none" onclick="ohmapOverlayClick(event)">
+  <div class="ohmap-modal-box" onclick="event.stopPropagation()">
+    <div class="ohmap-modal-head">
+      <h3 id="ohmap-modal-title">—</h3>
+      <button class="ohmap-modal-close" onclick="closeOrderDayModal()" title="বন্ধ করুন">✕</button>
+    </div>
+    <div class="ohmap-modal-summary" id="ohmap-modal-summary"></div>
+    <div id="ohmap-modal-orders"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// CONSTANTS & UTILS
+// ═══════════════════════════════════════════════════════════════════════
+const PALETTE = [
+  "#ea580c","#f97316","#fb923c","#fdba74",
+  "#2563eb","#3b82f6","#60a5fa","#93c5fd",
+  "#16a34a","#22c55e","#4ade80","#86efac",
+  "#dc2626","#ef4444","#f87171","#fca5a5",
+  "#78716c","#a8a29e","#d6d3d1","#e7e5e4",
+];
+
+const STATUS_CLS = {
+  "order placed":"st-green","recently ordered":"st-blue",
+  "follow up":"st-amber","unreachable":"st-gray",
+  "not interested":"st-red","aborted":"st-red",
+  "invalid data":"st-red","distributed":"st-blue","switch off":"st-gray",
+};
+function scls(s){ return s ? (STATUS_CLS[s.toLowerCase()]||"st-gray") : "st-gray"; }
+
+const SEG_CLS = {
+  "High Value":"seg-hv","At Risk":"seg-risk","Loyal":"seg-loyal",
+  "Frequent Caller":"seg-freq","New / Untested":"seg-new","Regular":"seg-reg",
+};
+const SEG_ICON = {
+  "High Value":"★","At Risk":"⚠","Loyal":"♦","Frequent Caller":"↻","New / Untested":"◎","Regular":"•",
+};
+const SEG_BN = {
+  "High Value":"গুরুত্বপূর্ণ কাস্টমার",
+  "Frequent Caller Low Order":"বেশি কল করে কিন্তু কম অর্ডার করে",
+  "New/Untested":"নতুন কাস্টমার",
+  "New / Untested":"নতুন কাস্টমার",
+  "At Risk":"ঝুঁকিতে আছে",
+  "Loyal":"বিশ্বস্ত কাস্টমার",
+  "Frequent Caller":"ঘন ঘন কল করে",
+  "Regular":"নিয়মিত কাস্টমার",
+};
+function segLabel(seg){ return SEG_BN[seg]||seg; }
+
+const PP_BN = {
+  "Monthly / Frequent Buyer":"নিয়মিত ক্রেতা (মাসিক)",
+  "Quarterly Buyer":"ত্রৈমাসিক ক্রেতা",
+  "Seasonal / Occasional Buyer":"অনিয়মিত / মৌসুমী ক্রেতা",
+  "New / One-time":"নতুন কাস্টমার",
+};
+function ppLabel(label){ return PP_BN[label]||label; }
+
+function esc(s){ const d=document.createElement("div"); d.textContent=s??""; return d.innerHTML; }
+function money(n){ if(n==null||isNaN(n)) return "—"; return "৳"+Number(n).toLocaleString("en-BD",{maximumFractionDigits:0}); }
+function fmtD(s){ return s?String(s).slice(0,10):"—"; }
+function pct(n){ return n==null ? "—" : n+"%"; }
+function na(v,suffix=""){ return (v==null||v==="")?"N/A":(v+suffix); }
+function ppCls(label){
+  if(!label) return "pp-new";
+  if(label.includes("Monthly")) return "pp-monthly";
+  if(label.includes("Quarterly")) return "pp-quarterly";
+  if(label.includes("Seasonal")) return "pp-seasonal";
+  return "pp-new";
+}
+function ppIcon(label){
+  if(!label) return "";
+  if(label.includes("Monthly")) return "🔁";
+  if(label.includes("Quarterly")) return "📅";
+  if(label.includes("Seasonal")) return "🌤";
+  return "◎";
+}
+
+// ── Status label Bangla map ────────────────────────────────────────────────
+const STATUS_LABELS = {
+  "not interested":    "আগ্রহী না",
+  "unreachable":       "যোগাযোগ করা যায়নি",
+  "follow up":         "ফলো-আপ প্রয়োজন",
+  "inform later":      "পরে জানানো হবে",
+  "order placed":      "অর্ডার হয়েছে",
+  "recently ordered":  "সম্প্রতি অর্ডার করেছে",
+  "aborted":           "বাতিল",
+  "invalid data":      "ভুল তথ্য",
+  "distributed":       "বিতরণ হয়েছে",
+  "switch off":        "ফোন বন্ধ",
+  "new order":         "নতুন অর্ডার",
+};
+function statusLabel(s){ if(!s) return s; return STATUS_LABELS[s.toLowerCase()]||s; }
+
+// ── Duration: hours → "X ঘণ্টা" or "X.X দিন" ─────────────────────────────
+function fmtHours(h){
+  if(h==null) return "N/A";
+  h = parseFloat(h); if(isNaN(h)) return "N/A";
+  if(h < 24) return (Math.round(h*10)/10)+" ঘণ্টা";
+  return (Math.round(h/24*10)/10)+" দিন";
+}
+
+// ── Strip trailing phone numbers from address strings ──────────────────────
+function cleanAddress(a){
+  if(!a) return a;
+  return a.replace(/,?\s*0[12][0-9]{9}\s*$/, "").trim();
+}
+
+// ── Centralised conditional colour by metric type ──────────────────────────
+function getStatusColor(value, type){
+  if(value==null) return null;
+  var v = parseFloat(value); if(isNaN(v)) return null;
+  if(type==="return_rate")    return v<=10?"var(--green)":v<=25?"var(--amber)":"var(--red)";
+  if(type==="conversion_rate")return v>=50?"var(--green)":v>=20?"var(--amber)":"var(--red)";
+  if(type==="due_amount")     return v===0?"var(--ink-soft)":v<=2000?"var(--amber)":"var(--red)";
+  if(type==="resolution_days")return v<1?"var(--green)":v<=3?"var(--ink)":"var(--amber)";
+  return null;
+}
+
+// ── Rule-based actionable recommendations ─────────────────────────────────
+function buildActionItems(ci, oi, rm, xi, d){
+  var items = [];
+  var pp  = oi.purchase_pattern || {};
+  var rr  = rm.return_rate_by_order || 0;
+  var due = rm.total_due_amount || 0;
+  var seg = xi.customer_value_segment || "";
+  var timeline = d.timeline || [];
+  // Count consecutive recent negative statuses
+  var recentNeg = 0;
+  for(var i=0; i<Math.min(timeline.length,5); i++){
+    var ts=(timeline[i].status||"").toLowerCase();
+    if(ts==="unreachable"||ts==="not interested"||ts==="switch off") recentNeg++;
+    else break;
+  }
+  // Overdue re-order
+  if(pp.label&&pp.label.includes("Monthly")&&pp.last_order_days_ago!=null&&pp.avg_days_between_orders!=null){
+    if(pp.last_order_days_ago>pp.avg_days_between_orders*1.5)
+      items.push({level:"warning",text:"⚠️ নিয়মিত ক্রেতা, কিন্তু "+pp.last_order_days_ago+" দিন ধরে অর্ডার নেই (স্বাভাবিক ব্যবধান "+pp.avg_days_between_orders+" দিন) — ফলো-আপ কলের প্রয়োজন হতে পারে।"});
+  }
+  // High return rate
+  if(rr>30) items.push({level:"danger",text:"🔴 উচ্চ রিটার্ন হার ("+rr+"%) — অর্ডার নেওয়ার আগে সতর্কতার সাথে যাচাই করুন।"});
+  // Due payment
+  if(due>0) items.push({level:"warning",text:"💰 বাকি টাকা আছে ("+money(due)+") — পেমেন্ট কালেকশন নিশ্চিত করুন।"});
+  // Consecutive unreachable
+  if(recentNeg>=2) items.push({level:"warning",text:"📞 সম্প্রতি "+recentNeg+"টি কলে যোগাযোগ করা যায়নি — বিকল্প নম্বর বা মাধ্যম ব্যবহার করে দেখুন।"});
+  // High value
+  if(seg==="High Value") items.push({level:"info",text:"⭐ গুরুত্বপূর্ণ কাস্টমার — অগ্রাধিকার দিয়ে সেরা সার্ভিস নিশ্চিত করুন।"});
+  // Default
+  if(items.length===0) items.push({level:"ok",text:"✅ স্বাভাবিক অবস্থা — কোনো বিশেষ পদক্ষেপ প্রয়োজন নেই।"});
+  var order={danger:0,warning:1,info:2,ok:3};
+  items.sort(function(a,b){ return order[a.level]-order[b.level]; });
+  return items.slice(0,3);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// COUNT-UP ANIMATION
+// ═══════════════════════════════════════════════════════════════════════
+function countUp(el, target, duration){
+  duration = duration || 600;
+  var t0 = performance.now();
+  function step(now){
+    var p = Math.min((now - t0) / duration, 1);
+    var e = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(target * e).toLocaleString();
+    if(p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// LOGO
+// ═══════════════════════════════════════════════════════════════════════
+const logoInput = document.getElementById('logo-input');
+const logoArea  = document.getElementById('logo-area');
+
+function showLogoImg(url){
+  logoArea.innerHTML = '<div class="logo-wrap" onclick="document.getElementById(\'logo-input\').click()"><img src="'+esc(url)+'?t='+Date.now()+'" alt="লোগো"><div class="logo-change-overlay">পরিবর্তন<br>করুন</div></div>';
+}
+function showLogoPlaceholder(){
+  logoArea.innerHTML = '<div class="logo-placeholder" onclick="document.getElementById(\'logo-input\').click()">লোগো<br>যুক্ত করুন</div>';
+}
+
+async function uploadLogoFile(file){
+  var form = new FormData(); form.append('file', file);
+  try{
+    var r = await fetch('/api/logo', {method:'POST', body:form});
+    if(r.ok){ var j = await r.json(); showLogoImg(j.url); }
+  }catch(e){}
+}
+
+(async function initLogo(){
+  try{
+    var r = await fetch('/api/logo');
+    if(r.ok){ var j = await r.json(); showLogoImg(j.url); }
+    else showLogoPlaceholder();
+  }catch(e){ showLogoPlaceholder(); }
+})();
+
+logoInput.addEventListener('change', async function(){
+  var file = this.files[0]; if(!file) return;
+  await uploadLogoFile(file);
+  this.value = '';
+});
+
+// Drag-drop onto header logo area
+var hdr = document.querySelector('header');
+hdr.addEventListener('dragover', function(e){
+  e.preventDefault();
+  logoArea.classList.add('drag-over');
+});
+hdr.addEventListener('dragleave', function(e){
+  if(!hdr.contains(e.relatedTarget)) logoArea.classList.remove('drag-over');
+});
+hdr.addEventListener('drop', async function(e){
+  e.preventDefault();
+  logoArea.classList.remove('drag-over');
+  var file = e.dataTransfer && e.dataTransfer.files[0];
+  if(file) await uploadLogoFile(file);
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// TAB SWITCHING
+// ═══════════════════════════════════════════════════════════════════════
+var dashLoaded = false;
+function switchTab(name){
+  document.querySelectorAll(".pane").forEach(function(p){ p.classList.remove("active"); });
+  document.querySelectorAll(".tab-nav button").forEach(function(b){ b.classList.remove("active"); });
+  document.getElementById("pane-"+name).classList.add("active");
+  document.querySelectorAll(".tab-nav button")[name==="search"?0:1].classList.add("active");
+  if(name==="dashboard" && !dashLoaded){ dashLoaded=true; loadDashboard(); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SEARCH
+// ═══════════════════════════════════════════════════════════════════════
+var inp   = document.getElementById("phone-input");
+var btn   = document.getElementById("search-btn");
+var msgEl = document.getElementById("state-msg");
+var resEl = document.getElementById("results");
+var hintEl= document.getElementById("empty-hint");
+
+async function search(){
+  var phone = inp.value.trim(); if(!phone) return;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="btn-spinner"></span>খোঁজা হচ্ছে...';
+  msgEl.className = ""; msgEl.textContent = "";
+  resEl.innerHTML = ""; hintEl.style.display = "none";
+  destroyProfileCharts();
+  try{
+    var r = await fetch('/api/profile?phone='+encodeURIComponent(phone));
+    var d = await r.json();
+    if(!r.ok){ msgEl.className="error"; msgEl.textContent = d.detail||"সার্ভার ত্রুটি।"; return; }
+    if(!d.found){ msgEl.textContent = "এই নম্বরে কোনো তথ্য পাওয়া যায়নি।"; return; }
+    renderProfile(d);
+  }catch(e){ msgEl.className="error"; msgEl.textContent="সার্ভারের সাথে সংযোগ করা যাচ্ছে না।"; }
+  finally{ btn.disabled=false; btn.innerHTML='খুঁজুন'; }
+}
+btn.addEventListener("click", search);
+inp.addEventListener("keydown", function(e){ if(e.key==="Enter") search(); });
+
+// ═══════════════════════════════════════════════════════════════════════
+// RENDER PROFILE
+// ═══════════════════════════════════════════════════════════════════════
+var _pCharts = {};
+function destroyProfileCharts(){
+  Object.values(_pCharts).forEach(function(c){ c.destroy(); }); _pCharts = {};
+}
+
+function renderProfile(d){
+  var ci = d.call_insights  || {};
+  var oi = d.order_insights || {};
+  var rm = d.return_metrics || {};
+  var xi = d.cross_insights || {};
+  var orders    = d.orders || {};
+  var hasOrders = orders.found;
+  var seg    = xi.customer_value_segment || "Regular";
+  var segCls = SEG_CLS[seg] || "seg-reg";
+  var segIcon= SEG_ICON[seg] || "•";
+  var segBn  = segLabel(seg);
+  var pp  = oi.purchase_pattern  || {};
+  var rsm = d.remarks_summary    || {};
+  var lod = oi.last_order_detail || {};
+  var conv= xi.call_to_order_conversion || {};
+  var unr = xi.unreachable_to_order    || {};
+
+  var html = "";
+
+  // ── Hero KPI Strip ────────────────────────────────────────────────────
+  html += '<div class="stat-grid hero-strip">';
+  html += '<div class="stat-card" title="কলের মোট সংখ্যা"><div class="num" data-n="'+(ci.total_calls||0)+'">0</div><div class="label">মোট কল</div></div>';
+  html += '<div class="stat-card" title="মোট অর্ডার সংখ্যা"><div class="num"'+(hasOrders?' data-n="'+oi.total_orders+'">0':'>—')+'</div><div class="label">মোট অর্ডার</div></div>';
+  html += '<div class="stat-card" title="সব অর্ডারে মোট ব্যয়"><div class="num" style="font-size:17px">'+(hasOrders?money(oi.total_spend):"—")+'</div><div class="label">মোট ব্যয় (টাকা)</div></div>';
+  html += '<div class="stat-card" title="প্রতি অর্ডারে গড় টাকা"><div class="num" style="font-size:17px">'+(hasOrders?money(oi.avg_basket):"—")+'</div><div class="label">গড় অর্ডার মূল্য</div></div>';
+  var _rrC  = hasOrders ? (getStatusColor(rm.return_rate_by_order,"return_rate")||"var(--ink)") : "var(--ink-soft)";
+  var _dueC = hasOrders ? (getStatusColor(rm.total_due_amount,"due_amount")||"var(--ink)") : "var(--ink-soft)";
+  var _cvC  = conv.conversion_rate_pct!=null ? (getStatusColor(conv.conversion_rate_pct,"conversion_rate")||"var(--ink)") : "var(--ink-soft)";
+  html += '<div class="stat-card" title="রিটার্ন হার"><div class="num" style="color:'+_rrC+'">'+(hasOrders?pct(rm.return_rate_by_order):"—")+'</div><div class="label">রিটার্ন হার</div></div>';
+  html += '<div class="stat-card" title="পরিশোধ না হওয়া বাকি টাকা"><div class="num" style="font-size:17px;color:'+_dueC+'">'+(hasOrders?money(rm.total_due_amount):"—")+'</div><div class="label">বাকি টাকা</div></div>';
+  html += '<div class="stat-card" title="কল থেকে অর্ডারে রূপান্তর হার"><div class="num" style="font-size:17px;color:'+_cvC+'">'+(conv.conversion_rate_pct!=null?pct(conv.conversion_rate_pct):"—")+'</div><div class="label">কনভার্শন হার</div></div>';
+  html += '<div class="stat-card" title="গড় ডেলিভারি সময়"><div class="num" style="font-size:15px">'+(hasOrders&&oi.avg_delivery_days!=null?oi.avg_delivery_days+" দিন":"—")+'</div><div class="label">গড় ডেলিভারি</div></div>';
+  html += '</div>';
+
+  // ── Group 1: কাস্টমার পরিচিতি ─────────────────────────────────────────
+  var names = (ci.names_used||[]).join(", ") || "—";
+  var _acts = buildActionItems(ci, oi, rm, xi, d);
+  var _acPal = {danger:{bg:"#fef2f2",bdr:"var(--red)",lbl:"var(--red)"},warning:{bg:"#fffbeb",bdr:"var(--amber)",lbl:"var(--amber)"},info:{bg:"var(--color-info-light)",bdr:"var(--blue)",lbl:"var(--blue)"},ok:{bg:"var(--color-success-light)",bdr:"var(--green)",lbl:"var(--green)"}};
+  var _apal = _acPal[_acts[0].level];
+  html += '<div class="group group-customer">';
+  html += '<div class="group-header"><span class="group-dot"></span><span class="group-title">কাস্টমার পরিচিতি</span></div>';
+  html += '<div class="group-body">';
+  // ── Action card ──
+  html += '<div style="background:'+_apal.bg+';border-left:4px solid '+_apal.bdr+';border-radius:var(--radius-md);padding:12px 16px">';
+  html += '<div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:'+_apal.lbl+';margin-bottom:7px">করণীয়</div>';
+  _acts.forEach(function(item){ html += '<div style="font-size:13px;line-height:1.65;color:var(--ink);padding:1px 0">'+esc(item.text)+'</div>'; });
+  html += '</div>';
+  // ── Identity card ──
+  html += '<div class="section">';
+  html += '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">';
+  html += '<strong style="font-size:15px">'+esc(names)+'</strong>';
+  html += '<span style="font-family:var(--mono);color:var(--ink-soft)">'+esc(d.phone)+'</span>';
+  html += '<span class="seg-badge '+segCls+'">'+segIcon+' '+esc(segBn)+'</span>';
+  if(pp.label){
+    html += '<span class="pp-badge '+ppCls(pp.label)+'">'+ppIcon(pp.label)+' '+esc(ppLabel(pp.label))+'</span>';
+    if(pp.reorder_due) html += '<span class="reorder-tag">⟳ পুনরায় অর্ডার করার সময় হয়েছে</span>';
+  }
+  html += '</div>';
+  if((ci.addresses_used||[]).length){
+    var _cleanAddrs = ci.addresses_used.map(cleanAddress).filter(function(a){ return a&&a.length>2; });
+    if(_cleanAddrs.length) html += '<div class="chip-row">'+_cleanAddrs.map(function(a){ return '<span class="chip">'+esc(a)+'</span>'; }).join("")+'</div>';
+  }
+  html += '<div style="font-size:12px;color:var(--ink-soft);margin-top:4px">';
+  html += 'প্রথম যোগাযোগ: <strong>'+fmtD(ci.first_contact_date)+'</strong> &nbsp;·&nbsp; ';
+  html += 'সর্বশেষ: <strong>'+fmtD(ci.latest_call_date)+'</strong> &nbsp;·&nbsp; ';
+  html += 'মোট দিন: <strong>'+(ci.customer_lifecycle_days||0)+' দিন</strong>';
+  if(pp.last_order_days_ago!=null){
+    var _overdueOrder = pp.avg_days_between_orders && pp.last_order_days_ago>pp.avg_days_between_orders*1.5;
+    html += ' &nbsp;·&nbsp; শেষ অর্ডার: <strong style="color:'+(_overdueOrder?'var(--amber)':'inherit')+'">'+(_overdueOrder?'⏰ ':'')+pp.last_order_days_ago+' দিন আগে</strong>';
+  }
+  if(pp.avg_days_between_orders!=null) html += ' &nbsp;·&nbsp; গড় ব্যবধান: <strong>'+pp.avg_days_between_orders+' দিন</strong>';
+  html += '</div></div></div></div>';
+
+  // ── Group 2: কলের তথ্য ────────────────────────────────────────────────
+  html += '<div class="group group-calls">';
+  html += '<div class="group-header"><span class="group-dot"></span><span class="group-title">কলের তথ্য</span></div>';
+  html += '<div class="group-body">';
+
+  // Call analysis — 2-col on desktop: left = stats+chart, right = monthly+sources+notes
+  html += '<div class="section"><h2>কলের বিশ্লেষণ</h2>';
+  html += '<div class="wide-grid-2">';
+  // Left col: mini stats + donut chart
+  html += '<div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">';
+  html += '<div class="stat-card"><div class="num">'+(ci.total_calls||0)+'</div><div class="label">মোট কল</div></div>';
+  html += '<div class="stat-card"><div class="num">'+(ci.status_changes_count||0)+'</div><div class="label">অবস্থা পরিবর্তন</div></div>';
+  html += '<div class="stat-card"><div class="num">'+(ci.follow_up_count||0)+'</div><div class="label">ফলো-আপ</div></div>';
+  var _resColor = getStatusColor(ci.avg_resolution_hours!=null?ci.avg_resolution_hours/24:null,"resolution_days");
+  html += '<div class="stat-card"><div class="num" style="font-size:14px;color:'+(_resColor||"inherit")+'">'+fmtHours(ci.avg_resolution_hours)+'</div><div class="label">গড় সমাধান সময়</div></div>';
+  html += '</div>';
+  html += '<div class="ch-wrap"><canvas id="pc-call-status"></canvas></div>';
+  html += '</div>';
+  // Right col: heatmap calendar + sources + notes
+  html += '<div>';
+  html += renderCallHeatmap(d.timeline, ci.first_contact_date, ci.latest_call_date);
+  if((ci.source_breakdown||[]).length){
+    html += '<div style="margin-top:10px;font-size:12px;color:var(--ink-soft);margin-bottom:4px">উৎস</div>';
+    html += '<div class="chip-row">'+ci.source_breakdown.map(function(s){ return '<span class="chip">'+esc(s.source)+' · '+s.count+'</span>'; }).join("")+'</div>';
+  }
+  if((ci.notes_summary||[]).length){
+    html += '<div style="margin-top:10px"><div style="font-size:12px;color:var(--ink-soft);margin-bottom:4px">নোট ('+ci.notes_summary.length+')</div>';
+    html += '<div style="max-height:180px;overflow-y:auto;font-size:12.5px;line-height:1.5">'+ci.notes_summary.map(function(n){ return '<div style="padding:3px 0;border-bottom:1px solid var(--line)">'+esc(n)+'</div>'; }).join("")+'</div></div>';
+  }
+  html += '</div>';
+  html += '</div>';
+  html += '</div>';
+
+  // Cross insights (inside কলের তথ্য group)
+  html += '<div class="section"><h2>সার্বিক বিশ্লেষণ</h2>';
+  html += '<div class="stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">';
+  var _cvC2 = conv.conversion_rate_pct!=null?getStatusColor(conv.conversion_rate_pct,"conversion_rate"):"var(--ink-soft)";
+  html += '<div class="stat-card"><div class="num" style="color:'+(_cvC2||"var(--ink)")+'">'+(conv.conversion_rate_pct!=null?pct(conv.conversion_rate_pct):"N/A")+'</div><div class="label">কল → অর্ডার কনভার্শন</div><div class="sub">'+(conv.matched_orders||0)+' / '+(conv.order_placed_calls||0)+' অর্ডার কল</div></div>';
+  html += '<div class="stat-card"><div class="num" style="color:'+(unr.recovered?'var(--green)':'var(--ink-soft)')+'">'+(unr.recovered?"পুনরুদ্ধার":"—")+'</div><div class="label">অনুপলব্ধ → অর্ডার</div><div class="sub">'+(unr.orders_after_negative||0)+' অর্ডার / '+(unr.negative_status_calls||0)+' নেগেটিভ কল</div></div>';
+  html += '<div class="stat-card"><div class="num" style="font-size:13px"><span class="seg-badge '+segCls+'">'+segIcon+' '+esc(segBn)+'</span></div><div class="label">কাস্টমার ক্যাটাগরি</div></div>';
+  html += '</div></div>';
+
+  // Timeline
+  html += '<div class="section"><h2>কল করার ইতিহাস ('+(d.timeline||[]).length+')</h2>';
+  html += '<div class="timeline">';
+  (d.timeline||[]).forEach(function(t){
+    var matchTag = t.order_placed_match===true
+      ? '<span class="match-tag match-yes">✓ অর্ডার মিলেছে</span>'
+      : t.order_placed_match===false
+        ? '<span class="match-tag match-no">✗ অর্ডার নেই</span>' : "";
+    html += '<div class="t-item">';
+    html += '<div class="t-head">';
+    html += '<span class="t-date">'+esc(t.date||t.created_at||"—")+'</span>';
+    html += '<span class="sb '+scls(t.status)+'">'+esc(t.status||"—")+'</span>';
+    if(t.order_code) html += '<span style="font-family:var(--mono);font-size:12px;color:var(--ink-soft)">'+esc(t.order_code)+'</span>';
+    html += matchTag+'</div>';
+    if(t.note) html += '<div class="t-note">'+esc(t.note)+'</div>';
+    html += '<details class="raw"><summary>বিস্তারিত দেখুন</summary><pre>'+esc(JSON.stringify(t.raw,null,2))+'</pre></details>';
+    html += '</div>';
+  });
+  html += '</div></div>';
+  html += '</div></div>'; // /group-body /group-calls
+
+  // ── Group 3: অর্ডার ও বিক্রয় ────────────────────────────────────────
+  html += '<div class="group group-orders">';
+  html += '<div class="group-header"><span class="group-dot"></span><span class="group-title">অর্ডার ও বিক্রয়</span></div>';
+  html += '<div class="group-body">';
+
+  if(hasOrders){
+    // Order charts: 2-col on desktop when top products available
+    var hasTopProducts = (oi.top_products||[]).length > 0;
+    if(hasTopProducts) html += '<div class="wide-grid-2">';
+
+    // Order stats + chart (left col when 2-col)
+    html += '<div class="section"><h2>অর্ডারের বিশ্লেষণ</h2>';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">';
+    html += '<div class="stat-card"><div class="num" data-n="'+oi.total_orders+'">0</div><div class="label">অর্ডার</div></div>';
+    html += '<div class="stat-card"><div class="num" data-n="'+oi.total_items_purchased+'">0</div><div class="label">মোট পণ্য</div></div>';
+    html += '<div class="stat-card"><div class="num" style="font-size:14px">'+pct(oi.repeat_product_rate)+'</div><div class="label">পুনরায় কেনা হার</div></div>';
+    html += '<div class="stat-card"><div class="num" style="font-size:14px">'+oi.unique_products_bought+'</div><div class="label">ভিন্ন পণ্য</div></div>';
+    html += '</div>';
+    html += '<div class="ch-wrap"><canvas id="pc-order-status"></canvas></div>';
+    if((oi.order_source_breakdown||[]).length){
+      html += '<div style="margin-top:10px;font-size:12px;color:var(--ink-soft);margin-bottom:4px">অর্ডার উৎস</div>';
+      html += '<div class="chip-row">'+oi.order_source_breakdown.map(function(s){ return '<span class="chip">'+esc(s.source)+' · '+s.count+'</span>'; }).join("")+'</div>';
+    }
+    if(oi.customer_tag) html += '<div style="margin-top:8px;font-size:12px;color:var(--ink-soft)">কাস্টমার ট্যাগ: <span class="sb st-blue">'+esc(oi.customer_tag)+'</span></div>';
+    if((oi.districts_used||[]).length){
+      html += '<div style="margin-top:8px;font-size:12px;color:var(--ink-soft)">জেলা: '+oi.districts_used.map(function(x){ return '<span class="chip" style="font-size:11px">'+esc(x)+'</span>'; }).join(" ");
+      html += ' '+(oi.district_consistent?'<span style="color:var(--green)">✓ একটি জেলা</span>':'<span style="color:var(--amber)">⚠ একাধিক জেলা</span>')+'</div>';
+    }
+    html += '</div>';
+
+    // Top products chart (right col when 2-col) + order heatmap below it
+    if(hasTopProducts){
+      html += '<div class="section"><h2>বেশি কেনা পণ্যসমূহ</h2><div style="position:relative;height:260px"><canvas id="pc-top-products"></canvas></div>';
+      html += '<div id="pc-order-heatmap" style="margin-top:18px"></div>';
+      html += '</div>';
+      html += '</div>'; // close wide-grid-2
+    } else {
+      html += '<div id="pc-order-heatmap" style="margin-top:14px"></div>';
+    }
+
+    // 2-col: Delivery + Value
+    html += '<div class="col2">';
+    html += '<div class="section"><h2>ডেলিভারি পার্টনার</h2>';
+    html += '<table class="mini-tbl"><thead><tr><th>পার্টনার</th><th>মোট</th><th>ডেলিভারি</th><th>হার</th></tr></thead><tbody>';
+    (oi.delivery_partner_breakdown||[]).forEach(function(dp){
+      html += '<tr><td>'+esc(dp.partner)+'</td><td>'+dp.total+'</td><td>'+dp.delivered+'</td><td style="color:'+(dp.success_rate>=70?'var(--green)':'var(--amber)')+'">'+pct(dp.success_rate)+'</td></tr>';
+    });
+    html += '</tbody></table></div>';
+    html += '<div class="section"><h2>মূল্য বিবরণ</h2>';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+    html += '<div class="stat-card"><div class="num" style="font-size:15px">'+money(oi.total_discount_received)+'</div><div class="label">মোট ছাড়</div></div>';
+    html += '<div class="stat-card"><div class="num" style="font-size:15px">'+money(rm.total_paid_amount)+'</div><div class="label">মোট পরিশোধ</div></div>';
+    html += '<div class="stat-card"><div class="num">'+oi.avg_items_per_order+'</div><div class="label">গড় পণ্য/অর্ডার</div></div>';
+    html += '<div class="stat-card"><div class="num" style="font-size:14px">'+(oi.avg_delivery_days!=null?oi.avg_delivery_days+" দিন":"N/A")+'</div><div class="label">গড় ডেলিভারি</div></div>';
+    html += '</div></div>';
+    html += '</div>'; // /col2
+
+    // Last order
+    if(lod.invoice){
+      var loStatus = lod.status||"—";
+      var loStatusUp = loStatus.toUpperCase();
+      var loStatusCls = (loStatusUp.includes("DELIVER")||loStatusUp.includes("COMPLET")) ? "st-green"
+        : (loStatusUp.includes("CANCEL")||loStatusUp.includes("FLAG")||loStatusUp.includes("RETURN")) ? "st-red" : "st-amber";
+      html += '<div class="last-order-card"><h2>সর্বশেষ অর্ডারের বিস্তারিত</h2>';
+      html += '<div class="lo-header"><span class="lo-invoice">'+esc(lod.invoice)+'</span><span class="sb '+loStatusCls+'">'+esc(loStatus)+'</span>';
+      if(lod.sub_status) html += '<span class="sb st-gray" style="font-size:11px">'+esc(lod.sub_status)+'</span>';
+      html += '<span style="font-size:12px;color:var(--ink-soft)">'+fmtD(lod.creation_date)+'</span>';
+      if(lod.delivered_at&&lod.delivered_at!=="None") html += '<span style="font-size:12px;color:var(--green)">ডেলিভারি: '+fmtD(lod.delivered_at)+'</span>';
+      html += '</div>';
+      html += '<div style="margin-bottom:10px">';
+      (lod.products||[]).forEach(function(p){
+        html += '<div class="prod-row"><span>'+esc(p.name||"—")+'</span><span style="display:flex;gap:16px;font-family:var(--mono);font-size:12px;color:var(--ink-soft)"><span>×'+p.qty+'</span><span>'+money(p.unit_price)+' প্রতিটি</span><span style="color:var(--ink);font-weight:600">'+money(p.total_price)+'</span></span></div>';
+      });
+      html += '</div>';
+      html += '<div class="lo-grid">';
+      html += '<div class="lo-item"><div class="lnum">'+money(lod.sales_amount)+'</div><div class="llbl">বিক্রয় পরিমাণ</div></div>';
+      html += '<div class="lo-item"><div class="lnum">'+money(lod.delivery_fee)+'</div><div class="llbl">ডেলিভারি চার্জ</div></div>';
+      html += '<div class="lo-item"><div class="lnum" style="color:var(--green)">'+money(lod.paid_amount)+'</div><div class="llbl">পরিশোধ</div></div>';
+      html += '<div class="lo-item"><div class="lnum" style="color:'+(lod.due_amount>0?'var(--red)':'inherit')+'">'+(lod.due_amount>0?money(lod.due_amount):"৳০")+'</div><div class="llbl">বাকি</div></div>';
+      html += '</div>';
+      html += '<div style="font-size:12.5px;color:var(--ink-soft);margin-top:6px;display:flex;flex-wrap:wrap;gap:16px">';
+      if(lod.delivery_partner) html += '<span>ডেলিভারি: <strong>'+esc(lod.delivery_partner)+'</strong>'+(lod.dp_status?' — <em>'+esc(lod.dp_status)+'</em>':"")+'</span>';
+      if(lod.payment_method) html += '<span>পেমেন্ট: <strong>'+esc(lod.payment_method)+'</strong></span>';
+      if(lod.district) html += '<span>জেলা: <strong>'+esc(lod.district)+(lod.sub_district?' / '+esc(lod.sub_district):"")+'</strong></span>';
+      if(lod.customer_address) html += '<span style="max-width:300px">ঠিকানা: '+esc(lod.customer_address)+'</span>';
+      html += '</div></div>';
+    }
+
+  } else {
+    // No orders
+    html += '<div class="section"><h2>অর্ডারের বিশ্লেষণ</h2>';
+    html += '<p style="color:var(--ink-soft);font-size:13px">'+(orders.ss_available===false?"SQL সার্ভারের সাথে সংযোগ করা যাচ্ছে না: "+esc(orders.ss_error||""):"কোনো অর্ডার তথ্য পাওয়া যায়নি।")+'</p></div>';
+  }
+  html += '</div></div>'; // /group-body /group-orders
+
+  // ── Group 4: রিটার্ন ও ঝুঁকি ──────────────────────────────────────────
+  if(hasOrders){
+    var rr = rm.return_rate_by_order||0;
+    var riskColor = rr>30?"var(--red)":rr>15?"var(--amber)":"var(--green)";
+    html += '<div class="group group-risk">';
+    html += '<div class="group-header"><span class="group-dot"></span><span class="group-title">রিটার্ন ও ঝুঁকি</span></div>';
+    html += '<div class="group-body">';
+    html += '<div class="risk-panel"><h2>রিটার্ন ও ঝুঁকি সতর্কতা</h2>';
+    html += '<div class="risk-grid">';
+    html += '<div class="risk-card"><div class="risk-num-big" style="color:'+riskColor+'">'+pct(rm.return_rate_by_order)+'</div><div class="risk-label">রিটার্ন হার (অর্ডার)</div></div>';
+    html += '<div class="risk-card"><div class="risk-num-big" style="font-size:22px;color:'+riskColor+'">'+pct(rm.return_rate_by_qty)+'</div><div class="risk-label">রিটার্ন হার (পরিমাণ)</div></div>';
+    html += '<div class="risk-card"><div class="risk-num-big" style="font-size:22px;color:var(--red)">'+money(rm.total_due_amount)+'</div><div class="risk-label">মোট বাকি টাকা</div></div>';
+    html += '<div class="risk-card"><div class="risk-num-big" style="font-size:22px;color:var(--amber)">'+(rm.partial_payment_count||0)+'</div><div class="risk-label">আংশিক পেমেন্ট অর্ডার</div></div>';
+    html += '</div>';
+    if((rm.return_reasons||[]).length){
+      html += '<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">রিটার্নের কারণ</div>';
+      rm.return_reasons.forEach(function(r){
+        html += '<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0;border-bottom:1px solid #fecaca"><span>'+esc(r.reason)+'</span><strong>'+r.count+'</strong></div>';
+      });
+      html += '</div>';
+    }
+    if((rm.substatus_breakdown||[]).length){
+      html += '<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">সাব-স্ট্যাটাস</div>';
+      html += '<div class="chip-row">'+rm.substatus_breakdown.map(function(s){ return '<span class="sb st-red" style="font-size:11px">'+esc(s.substatus)+' · '+s.count+'</span>'; }).join("")+'</div></div>';
+    }
+    html += '<div style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">পেমেন্ট পদ্ধতি</div>';
+    html += '<table class="mini-tbl" style="background:transparent"><thead><tr><th>পদ্ধতি</th><th>সংখ্যা</th><th>বাকি</th></tr></thead><tbody>';
+    (rm.payment_method_breakdown||[]).forEach(function(p){
+      html += '<tr><td>'+esc(p.method)+'</td><td>'+p.count+'</td><td class="'+(p.due>0?'due-red':'mono')+'">'+(p.due>0?money(p.due):"—")+'</td></tr>';
+    });
+    html += '</tbody></table></div>';
+    html += '</div></div>'; // /group-body /group-risk
+  }
+
+  // ── Group 5: মন্তব্য সারাংশ ────────────────────────────────────────────
+  if((rsm.remarks||[]).length){
+    var srcLabel = {call_note:"কল",order_note:"অর্ডার","cancel/return":"ক্যান্সেল",internal_note:"ইন্টারনাল"};
+    var srcCls   = {call_note:"src-call",order_note:"src-order","cancel/return":"src-return",internal_note:"src-internal"};
+    html += '<div class="group group-remarks">';
+    html += '<div class="group-header"><span class="group-dot"></span><span class="group-title">মন্তব্য সারাংশ</span></div>';
+    html += '<div class="group-body">';
+    html += '<div class="remarks-panel"><h2>মন্তব্য ('+rsm.remarks.length+')</h2>';
+    if(rsm.ai_available){
+      html += '<div class="ai-summary-box"><div class="ai-label">সারসংক্ষেপ (AI)</div>'+esc(rsm.ai_summary||"")+'</div>';
+    }
+    html += '<details '+(rsm.ai_available?'':'open')+'>';
+    html += '<summary style="font-size:13px;font-weight:600;cursor:pointer;padding:4px 0;color:var(--ink-soft);user-select:none">'+(rsm.ai_available?"সব মন্তব্য দেখুন ▸":"সব মন্তব্য")+'</summary>';
+    html += '<div style="margin-top:8px">';
+    rsm.remarks.forEach(function(r){
+      html += '<div class="remark-item">';
+      html += '<span class="remark-date">'+((r.date||"?").slice(0,10))+'</span>';
+      html += '<span class="remark-src '+(srcCls[r.source]||'src-internal')+'">'+(srcLabel[r.source]||r.source)+'</span>';
+      html += '<span style="flex:1">'+esc(r.text)+'</span>';
+      if(r.invoice) html += '<span style="font-family:var(--mono);font-size:11px;color:var(--ink-soft)">'+esc(r.invoice)+'</span>';
+      html += '</div>';
+    });
+    html += '</div></details></div>';
+    html += '</div></div>'; // /group-body /group-remarks
+  }
+
+  resEl.innerHTML = html;
+  requestAnimationFrame(function(){
+    renderProfileCharts(ci, oi);
+    var _pcHmEl = document.getElementById('pc-order-heatmap');
+    if(_pcHmEl) renderCustomerOrderHeatmap(_pcHmEl, (d.orders && d.orders.orders) || []);
+    resEl.querySelectorAll('[data-n]').forEach(function(el){
+      var n = parseInt(el.getAttribute('data-n'), 10);
+      if(!isNaN(n) && n > 0) countUp(el, n);
+    });
+  });
+}
+
+// ── Calendar heatmap ──────────────────────────────────────────────────────
+var _HMAP_MONTHS = ['জানু','ফেব্রু','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টে','অক্টো','নভে','ডিসে'];
+var _HMAP_MFULL  = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
+var _HMAP_DAYS   = ['রবি','সোম','মঙ্গল','বুধ','বৃহঃ','শুক্র','শনি'];
+var _HMAP_CLR    = ['#e7e5e4','#fde8d4','#fdba74','#f97316','#ea580c'];
+function toBanglaNum(n){ return String(n).replace(/[0-9]/g, function(d){ return '০১২৩৪৫৬৭৮৯'[+d]; }); }
+
+function renderCallHeatmap(timeline, firstDate, lastDate){
+  // Group timeline by date (YYYY-MM-DD) → {count, statuses[]}
+  var callMap = {};
+  (timeline||[]).forEach(function(t){
+    var dt = (t.date||t.created_at||'').slice(0,10);
+    if(!dt) return;
+    if(!callMap[dt]) callMap[dt] = {count:0, statuses:[]};
+    callMap[dt].count++;
+    if(t.status) callMap[dt].statuses.push(t.status);
+  });
+  if(!Object.keys(callMap).length && !firstDate) return "";
+
+  function _ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function _clr(c){ return c<=0?_HMAP_CLR[0]:c===1?_HMAP_CLR[1]:c===2?_HMAP_CLR[2]:c===3?_HMAP_CLR[3]:_HMAP_CLR[4]; }
+
+  // Determine display range (first_contact_date → latest_call_date, capped at today)
+  var todayD = new Date(); todayD.setHours(0,0,0,0);
+  var startD = firstDate ? new Date(firstDate+'T00:00:00') : todayD;
+  var endD   = lastDate  ? new Date(lastDate+'T00:00:00')  : todayD;
+  if(endD > todayD) endD = new Date(todayD);
+  if(startD > endD) startD = new Date(endD);
+  // Cap history to 2 years so grid stays manageable
+  var twoYrAgo = new Date(todayD); twoYrAgo.setFullYear(twoYrAgo.getFullYear()-2);
+  if(startD < twoYrAgo) startD = new Date(twoYrAgo);
+
+  // Snap to week boundaries (Sun–Sat)
+  var gStart = new Date(startD); gStart.setDate(gStart.getDate() - gStart.getDay());
+  var gEnd   = new Date(endD);   gEnd.setDate(gEnd.getDate() + (6 - gEnd.getDay()));
+
+  var totalWeeks = Math.ceil((Math.round((gEnd - gStart)/86400000) + 1) / 7);
+  var SZ=13, GAP=2, STEP=15; // cell px, gap px, stride (13+2)
+
+  var h = '<div style="margin-top:10px">';
+  h += '<div style="font-size:11px;color:var(--ink-soft);font-weight:600;margin-bottom:6px">কলের ক্যালেন্ডার</div>';
+  h += '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px">';
+  h += '<div style="display:inline-flex;align-items:flex-start;gap:4px">';
+
+  // Left: day name labels (show every other day to save space)
+  h += '<div style="display:flex;flex-direction:column;gap:'+GAP+'px;padding-top:'+(18+GAP)+'px;flex-shrink:0">';
+  _HMAP_DAYS.forEach(function(day, i){
+    h += '<div style="height:'+SZ+'px;line-height:'+SZ+'px;font-size:9px;color:var(--ink-soft);text-align:right;white-space:nowrap">'+(i%2===0 ? day : '')+'</div>';
+  });
+  h += '</div>';
+
+  // Right: month labels + cell grid + legend
+  h += '<div style="flex-shrink:0">';
+
+  // Month label bar (absolute-positioned spans over a fixed-height row)
+  h += '<div style="position:relative;height:18px;margin-bottom:'+GAP+'px">';
+  var lastM = -1;
+  for(var w=0; w<totalWeeks; w++){
+    var wDate = new Date(gStart); wDate.setDate(gStart.getDate() + w*7);
+    var m = wDate.getMonth();
+    if(m !== lastM){
+      h += '<span style="position:absolute;left:'+(w*STEP)+'px;font-size:9.5px;color:var(--ink-soft);white-space:nowrap;bottom:0">'+_HMAP_MONTHS[m]+'</span>';
+      lastM = m;
+    }
+  }
+  h += '</div>';
+
+  // Cell grid: 7 rows (Sun–Sat), auto columns (one per week), grid-auto-flow:column fills week by week
+  h += '<div style="display:grid;grid-template-rows:repeat(7,'+SZ+'px);grid-auto-columns:'+SZ+'px;grid-auto-flow:column;gap:'+GAP+'px">';
+  for(var w=0; w<totalWeeks; w++){
+    for(var di=0; di<7; di++){
+      var cDate = new Date(gStart); cDate.setDate(gStart.getDate() + w*7 + di);
+      var dt    = _ymd(cDate);
+      var info  = callMap[dt] || {count:0, statuses:[]};
+      var cnt   = info.count;
+      var inRange = (cDate >= startD && cDate <= endD);
+      h += '<div class="hmap-cell"'
+        +' data-date="'+dt+'"'
+        +' data-count="'+cnt+'"'
+        +' data-statuses="'+esc(info.statuses.join('|'))+'"'
+        +' data-mi="'+cDate.getMonth()+'"'
+        +' onmouseenter="hmapShow(this,event)" onmouseleave="hmapHide()" onmousemove="hmapMove(event)"'
+        +' style="border-radius:2px;cursor:'+(cnt>0?'pointer':'default')
+        +';background:'+_clr(cnt)+';opacity:'+(inRange?'1':'0.28')+'"></div>';
+    }
+  }
+  h += '</div>'; // /cell grid
+
+  // Legend
+  h += '<div style="display:flex;align-items:center;gap:3px;margin-top:7px;font-size:10px;color:var(--ink-soft)">';
+  h += '<span style="margin-right:2px">কম</span>';
+  _HMAP_CLR.forEach(function(c){ h += '<div style="width:11px;height:11px;border-radius:2px;background:'+c+'"></div>'; });
+  h += '<span style="margin-left:2px">বেশি</span></div>';
+
+  h += '</div>'; // /right col
+  h += '</div>'; // /inline-flex
+  h += '</div>'; // /scroll wrapper
+  h += '</div>'; // /outer wrapper
+  return h;
+}
+
+// Global tooltip for heatmap cells (attached to body once on first hover)
+var _hmapTT = null;
+function hmapShow(el, e){
+  if(!_hmapTT){
+    _hmapTT = document.createElement('div');
+    _hmapTT.className = 'hmap-tt';
+    document.body.appendChild(_hmapTT);
+  }
+  var dt  = el.getAttribute('data-date');
+  var cnt = +el.getAttribute('data-count');
+  var mi  = +el.getAttribute('data-mi');
+  var sts = (el.getAttribute('data-statuses')||'').split('|').filter(Boolean);
+  var pd  = new Date(dt + 'T00:00:00');
+  var dateStr = toBanglaNum(pd.getDate()) + ' ' + _HMAP_MFULL[mi] + ', ' + toBanglaNum(pd.getFullYear());
+  var callStr = cnt === 0 ? 'কোনো কল নেই' : toBanglaNum(cnt) + 'টি কল';
+  var inner = '<strong>' + dateStr + '</strong><br>' + callStr;
+  if(sts.length) inner += '<br><span style="color:#d4d4d4;font-size:11px">' + sts.map(statusLabel).join(', ') + '</span>';
+  _hmapTT.innerHTML = inner;
+  _hmapTT.style.display = 'block';
+  hmapMove(e);
+}
+function hmapHide(){ if(_hmapTT) _hmapTT.style.display = 'none'; }
+function hmapMove(e){ if(_hmapTT){ _hmapTT.style.left = (e.clientX+14)+'px'; _hmapTT.style.top = (e.clientY-60)+'px'; } }
+
+function renderCustomerOrderHeatmap(el, ordersList){
+  if(!el||!ordersList||!ordersList.length){ el.style.display='none'; return; }
+
+  // Collect all valid (invoice, date) pairs first — no date filter yet
+  var invData={};
+  ordersList.forEach(function(o){
+    if(!o.date||!o.invoice) return;
+    var dt=o.date.slice(0,10);
+    if(!invData[o.invoice]) invData[o.invoice]={date:dt,qty:0};
+    invData[o.invoice].qty+=(o.qty||0);
+  });
+  if(!Object.keys(invData).length){ el.style.display='none'; return; }
+
+  // Anchor the 4-month window to the customer's latest order, not today
+  var today=new Date(); today.setHours(0,0,0,0);
+  var maxOrderDate=new Date(0); // epoch — beaten by any real order date
+  Object.keys(invData).forEach(function(inv){
+    var d=new Date(invData[inv].date+'T00:00:00');
+    if(!isNaN(d.getTime())&&d>maxOrderDate) maxOrderDate=d;
+  });
+  // Window ends at last order date (capped at today so we don't show future cells)
+  var windowEnd=new Date(Math.min(maxOrderDate.getTime(), today.getTime()));
+  windowEnd.setHours(0,0,0,0);
+  var since=new Date(windowEnd); since.setMonth(since.getMonth()-4);
+
+  // Re-filter invData to the 4-month window
+  var filtered={};
+  Object.keys(invData).forEach(function(inv){
+    var d=new Date(invData[inv].date+'T00:00:00');
+    if(!isNaN(d.getTime())&&d>=since&&d<=windowEnd) filtered[inv]=invData[inv];
+  });
+  invData=filtered;
+
+  // Aggregate by calendar day
+  var dayMap={}, maxCount=0;
+  Object.keys(invData).forEach(function(inv){
+    var info=invData[inv], dt=info.date;
+    if(!dayMap[dt]) dayMap[dt]={count:0,qty:0};
+    dayMap[dt].count++;
+    dayMap[dt].qty+=info.qty;
+    if(dayMap[dt].count>maxCount) maxCount=dayMap[dt].count;
+  });
+
+  if(!Object.keys(dayMap).length){ el.style.display='none'; return; }
+
+  var SZ=13, GAP=2, STEP=15;
+  var startD=new Date(since), endD=new Date(windowEnd);
+  var gStart=new Date(startD); gStart.setDate(gStart.getDate()-gStart.getDay());
+  var gEnd=new Date(endD);     gEnd.setDate(gEnd.getDate()+(6-gEnd.getDay()));
+  var totalWeeks=Math.ceil((Math.round((gEnd-gStart)/86400000)+1)/7);
+
+  function _y(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function _c(n){ if(n<=0||maxCount<=0) return _HMAP_CLR[0]; var r=n/maxCount; return r<=.25?_HMAP_CLR[1]:r<=.5?_HMAP_CLR[2]:r<=.75?_HMAP_CLR[3]:_HMAP_CLR[4]; }
+
+  var h='<div style="font-size:11px;color:var(--ink-soft);font-weight:600;margin-bottom:6px">অর্ডার ক্যালেন্ডার <span style="font-weight:400">(৪ মাস)</span></div>';
+  h+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">';
+  h+='<div style="display:inline-flex;align-items:flex-start;gap:4px">';
+
+  // Day name labels
+  h+='<div style="display:flex;flex-direction:column;gap:'+GAP+'px;padding-top:18px;flex-shrink:0">';
+  _HMAP_DAYS.forEach(function(day,i){
+    h+='<div style="height:'+SZ+'px;line-height:'+SZ+'px;font-size:9px;color:var(--ink-soft);text-align:right;padding-right:4px;white-space:nowrap">'+(i%2===0?day:'')+'</div>';
+  });
+  h+='</div>';
+
+  h+='<div style="flex-shrink:0">';
+
+  // Month labels
+  h+='<div style="position:relative;height:14px;margin-bottom:'+GAP+'px">';
+  var lastM=-1;
+  for(var w=0;w<totalWeeks;w++){
+    var wDate=new Date(gStart); wDate.setDate(gStart.getDate()+w*7);
+    var m=wDate.getMonth();
+    if(m!==lastM){
+      h+='<span style="position:absolute;left:'+(w*STEP)+'px;font-size:10px;color:var(--ink-soft);white-space:nowrap;bottom:0">'+_HMAP_MONTHS[m]+'</span>';
+      lastM=m;
+    }
+  }
+  h+='</div>';
+
+  // Cell grid
+  h+='<div style="display:grid;grid-template-rows:repeat(7,'+SZ+'px);grid-auto-columns:'+SZ+'px;grid-auto-flow:column;gap:'+GAP+'px">';
+  for(var w=0;w<totalWeeks;w++){
+    for(var di=0;di<7;di++){
+      var cDate=new Date(gStart); cDate.setDate(gStart.getDate()+w*7+di);
+      var dt=_y(cDate);
+      var info=dayMap[dt]||{count:0,qty:0};
+      var cnt=info.count, qty=info.qty;
+      var inRange=(cDate>=startD&&cDate<=endD);
+      h+='<div class="hmap-cell"'
+        +' data-date="'+dt+'" data-count="'+cnt+'" data-qty="'+qty+'" data-mi="'+cDate.getMonth()+'"'
+        +' onmouseenter="oHmapShow(this,event)" onmouseleave="hmapHide()" onmousemove="hmapMove(event)"'
+        +' style="border-radius:2px;cursor:default;background:'+_c(cnt)+';opacity:'+(inRange?'1':'0.28')+'"></div>';
+    }
+  }
+  h+='</div>';
+
+  // Legend
+  h+='<div style="display:flex;align-items:center;gap:3px;margin-top:7px;font-size:10px;color:var(--ink-soft)">';
+  h+='<span style="margin-right:3px">কম</span>';
+  _HMAP_CLR.forEach(function(c){ h+='<div style="width:11px;height:11px;border-radius:2px;background:'+c+'"></div>'; });
+  h+='<span style="margin-left:3px">বেশি</span></div>';
+
+  h+='</div></div></div>';
+  el.innerHTML=h;
+}
+
+function renderProfileCharts(ci, oi){
+  var csEl = document.getElementById("pc-call-status");
+  if(csEl && ci.status_breakdown){
+    var items = Object.entries(ci.status_breakdown).map(function(e){ return {s:e[0],lbl:statusLabel(e[0]),count:e[1].count||e[1]}; }).sort(function(a,b){ return b.count-a.count; });
+    if(items.length){
+      var total = items.reduce(function(s,x){ return s+x.count; }, 0);
+      _pCharts["cs"] = new Chart(csEl, {type:"doughnut", data:{labels:items.map(function(x){ return x.lbl; }), datasets:[{data:items.map(function(x){ return x.count; }), backgroundColor:PALETTE, borderWidth:1}]}, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"right",labels:{font:{size:10},boxWidth:10,padding:6}}, tooltip:{callbacks:{label:function(ctx){ return ' '+ctx.label+': '+ctx.raw+' ('+Math.round(ctx.raw*100/total)+'%)'; }}}}}});
+    }
+  }
+  var osEl = document.getElementById("pc-order-status");
+  if(osEl && oi.status_breakdown){
+    var oitems = Object.entries(oi.status_breakdown).map(function(e){ return {s:e[0],lbl:statusLabel(e[0]),c:e[1]}; }).sort(function(a,b){ return b.c-a.c; });
+    if(oitems.length){
+      var ototal = oitems.reduce(function(s,x){ return s+x.c; }, 0);
+      _pCharts["os"] = new Chart(osEl, {type:"doughnut", data:{labels:oitems.map(function(x){ return x.lbl; }), datasets:[{data:oitems.map(function(x){ return x.c; }), backgroundColor:PALETTE, borderWidth:1}]}, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"right",labels:{font:{size:10},boxWidth:10,padding:6}}, tooltip:{callbacks:{label:function(ctx){ return ' '+ctx.label+': '+ctx.raw+' ('+Math.round(ctx.raw*100/ototal)+'%)'; }}}}}});
+    }
+  }
+  var tpEl = document.getElementById("pc-top-products");
+  if(tpEl && oi.top_products && oi.top_products.length){
+    var tpItems = oi.top_products.slice(0,10);
+    _pCharts["tp"] = new Chart(tpEl, {type:"bar", data:{labels:tpItems.map(function(x){ return x.name; }), datasets:[{label:"পরিমাণ", data:tpItems.map(function(x){ return x.qty; }), backgroundColor:PALETTE.slice(0,tpItems.length), borderRadius:3, borderSkipped:false}]}, options:{indexAxis:"y", responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{ticks:{font:{size:10}},grid:{color:"#eee"}},y:{ticks:{font:{size:10}}}}}});
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════════════════
+var _dashData = null, _dCharts = {}, _prodMode = "qty";
+function destroyChart(id){ if(_dCharts[id]){ _dCharts[id].destroy(); delete _dCharts[id]; } }
+
+async function loadDashboard(){
+  document.getElementById("dash-loading").style.display = "block";
+  document.getElementById("dash-content").style.display = "none";
+  document.getElementById("dash-error").style.display   = "none";
+  try{
+    var r = await fetch("/api/dashboard");
+    var d = await r.json();
+    if(!r.ok) throw new Error(d.detail||"সার্ভার ত্রুটি");
+    _dashData = d; renderDashboard(d);
+  }catch(e){
+    document.getElementById("dash-loading").style.display = "none";
+    var el = document.getElementById("dash-error");
+    el.style.display = "block";
+    el.innerHTML = '<div class="err-note">ড্যাশবোর্ড লোড করা যাচ্ছে না: '+esc(e.message)+'</div>';
+  }
+}
+
+function renderDashboard(d){
+  document.getElementById("dash-loading").style.display = "none";
+  var conv = d.conversion  || {};
+  var due  = d.due_overview|| {};
+  document.getElementById("dash-stats").innerHTML =
+    '<div class="dsc"><div class="dnum">'+((d.total_calls||0).toLocaleString())+'</div><div class="dlbl">মোট কল সংখ্যা</div></div>'+
+    '<div class="dsc"><div class="dnum">'+(conv.status==="calculating"?'<span style="font-size:13px;color:var(--ink-soft)">হিসাব হচ্ছে...</span>':conv.rate_pct!=null?conv.rate_pct+"%":"—")+'</div><div class="dlbl">কনভার্শন হার</div><div class="dsub">'+(conv.status==="calculating"?"পটভূমিতে চলছে":conv.matched_orders+"/"+conv.order_placed_calls)+'</div></div>'+
+    '<div class="dsc"><div class="dnum">'+(d.aov?money(d.aov):"—")+'</div><div class="dlbl">গড় অর্ডার মূল্য (AOV)</div></div>'+
+    '<div class="dsc"><div class="dnum">'+(d.repeat_rate!=null?d.repeat_rate+"%":"—")+'</div><div class="dlbl">পুনরায় কেনার হার</div></div>'+
+    '<div class="dsc"><div class="dnum" style="font-size:20px">'+(due.total_due?money(due.total_due):"—")+'</div><div class="dlbl">মোট বাকি টাকা</div><div class="dsub">'+((due.orders_with_due||0).toLocaleString())+' অর্ডার</div></div>';
+
+  if(d.call_status_breakdown&&d.call_status_breakdown.length){
+    destroyChart("cs");
+    var citems = d.call_status_breakdown.filter(function(x){ return x.status&&x.count>0; });
+    _dCharts["cs"] = new Chart(document.getElementById("chart-call-status"), {type:"doughnut", data:{labels:citems.map(function(x){ return statusLabel(x.status); }), datasets:[{data:citems.map(function(x){ return x.count; }), backgroundColor:PALETTE, borderWidth:1}]}, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"right",labels:{font:{size:11},boxWidth:12,padding:8}}, tooltip:{callbacks:{label:function(ctx){ return ' '+ctx.label+': '+ctx.raw.toLocaleString()+' ('+citems[ctx.dataIndex].pct+'%)'; }}}}}});
+  }
+  if(d.order_status_funnel&&d.order_status_funnel.length){
+    destroyChart("os");
+    var osfitems = d.order_status_funnel.slice(0,12);
+    _dCharts["os"] = new Chart(document.getElementById("chart-order-status"), {type:"bar", data:{labels:osfitems.map(function(x){ return statusLabel(x.status); }), datasets:[{data:osfitems.map(function(x){ return x.count; }), backgroundColor:PALETTE.slice(0,osfitems.length), borderRadius:4, borderSkipped:false}]}, options:{indexAxis:"y", responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{ticks:{font:{size:11}},grid:{color:"#eee"}},y:{ticks:{font:{size:11}}}}}});
+  }
+  renderTopProducts();
+  if(d.district_distribution&&d.district_distribution.length){
+    destroyChart("di");
+    var ditems = d.district_distribution;
+    _dCharts["di"] = new Chart(document.getElementById("chart-district"), {type:"bar", data:{labels:ditems.map(function(x){ return x.district; }), datasets:[{data:ditems.map(function(x){ return x.count; }), backgroundColor:PALETTE[4], borderRadius:4}]}, options:{indexAxis:"y", responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{ticks:{font:{size:11}}},y:{ticks:{font:{size:11}}}}}});
+  }
+  if(d.payment_method_breakdown&&d.payment_method_breakdown.length){
+    destroyChart("pm");
+    var pmitems = d.payment_method_breakdown.slice(0,10);
+    var pmtotal = pmitems.reduce(function(s,x){ return s+x.count; }, 0);
+    _dCharts["pm"] = new Chart(document.getElementById("chart-payment"), {type:"doughnut", data:{labels:pmitems.map(function(x){ return x.method; }), datasets:[{data:pmitems.map(function(x){ return x.count; }), backgroundColor:PALETTE, borderWidth:1}]}, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"right",labels:{font:{size:11},boxWidth:12,padding:6}}, tooltip:{callbacks:{label:function(ctx){ return ' '+ctx.label+': '+ctx.raw.toLocaleString()+' ('+(ctx.raw*100/pmtotal).toFixed(1)+'%)'; }}}}}});
+  }
+  if(d.delivery_partner_performance&&d.delivery_partner_performance.length){
+    destroyChart("dp");
+    var dpitems = d.delivery_partner_performance.slice(0,10);
+    _dCharts["dp"] = new Chart(document.getElementById("chart-dp"), {type:"bar", data:{labels:dpitems.map(function(x){ return x.partner; }), datasets:[{label:"ডেলিভারি হয়েছে",data:dpitems.map(function(x){ return x.delivered; }),backgroundColor:PALETTE[8],borderRadius:4},{label:"ফেরত/সমস্যা",data:dpitems.map(function(x){ return x.flagged; }),backgroundColor:PALETTE[12],borderRadius:4},{label:"অন্যান্য",data:dpitems.map(function(x){ return x.total-x.delivered-x.flagged; }),backgroundColor:PALETTE[18],borderRadius:4}]}, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{font:{size:12}}}}, scales:{x:{stacked:true,ticks:{font:{size:11}}},y:{stacked:true,ticks:{font:{size:11}}}}}});
+  }
+  document.getElementById("dash-content").style.display = "block";
+  loadOrderHeatmap();
+}
+
+function renderTopProducts(){
+  if(!_dashData) return;
+  var isQty  = _prodMode==="qty";
+  var tpdata = isQty ? (_dashData.top_products_by_qty||[]) : (_dashData.top_products_by_revenue||[]);
+  var vals   = isQty ? tpdata.map(function(x){ return x.qty; }) : tpdata.map(function(x){ return x.revenue; });
+  destroyChart("tp");
+  _dCharts["tp"] = new Chart(document.getElementById("chart-top-products"), {type:"bar", data:{labels:tpdata.map(function(x){ return x.name; }), datasets:[{label:isQty?"বিক্রয় সংখ্যা":"আয় (৳)", data:vals, backgroundColor:PALETTE.slice(0,tpdata.length), borderRadius:4, borderSkipped:false}]}, options:{indexAxis:"y", responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{ticks:{font:{size:11}},grid:{color:"#eee"}},y:{ticks:{font:{size:11}}}}}});
+}
+
+function switchProducts(m){
+  _prodMode = m;
+  document.getElementById("btn-qty").classList.toggle("active", m==="qty");
+  document.getElementById("btn-rev").classList.toggle("active", m==="revenue");
+  renderTopProducts();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ORDER HEATMAP
+// ═══════════════════════════════════════════════════════════════════════
+
+function _ohmapYmd(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function _oHeatColor(count, maxCount){
+  if(count<=0||maxCount<=0) return _HMAP_CLR[0];
+  var r=count/maxCount;
+  if(r<=0.25) return _HMAP_CLR[1];
+  if(r<=0.50) return _HMAP_CLR[2];
+  if(r<=0.75) return _HMAP_CLR[3];
+  return _HMAP_CLR[4];
+}
+
+function onOhmapPreset(v){
+  var cr=document.getElementById('ohmap-custom-range');
+  cr.style.display=(v==='custom')?'flex':'none';
+  if(v!=='custom') loadOrderHeatmap();
+}
+
+async function loadOrderHeatmap(){
+  var preset=document.getElementById('ohmap-preset').value;
+  var today=new Date(); today.setHours(0,0,0,0);
+  var endDate=_ohmapYmd(today);
+  var startDate;
+  if(preset==='4m'){
+    var s=new Date(today); s.setMonth(s.getMonth()-4); startDate=_ohmapYmd(s);
+  } else if(preset==='6m'){
+    var s=new Date(today); s.setMonth(s.getMonth()-6); startDate=_ohmapYmd(s);
+  } else if(preset==='1y'){
+    var s=new Date(today); s.setFullYear(s.getFullYear()-1); startDate=_ohmapYmd(s);
+  } else {
+    startDate=document.getElementById('ohmap-start').value;
+    endDate  =document.getElementById('ohmap-end').value;
+    if(!startDate||!endDate) return;
+  }
+
+  var container=document.getElementById('ohmap-container');
+  container.innerHTML='<div style="text-align:center;color:var(--ink-soft);padding:24px;font-size:13px">লোড হচ্ছে...</div>';
+
+  try{
+    var r=await fetch('/api/orders/heatmap?start='+startDate+'&end='+endDate);
+    var data=await r.json();
+    if(!r.ok) throw new Error(data.detail||'সার্ভার ত্রুটি');
+    renderOrderHeatmap(data.data, data.start, data.end);
+  }catch(e){
+    container.innerHTML='<div class="err-note">হিটম্যাপ লোড করা যাচ্ছে না: '+esc(e.message)+'</div>';
+  }
+}
+
+function renderOrderHeatmap(days, startStr, endStr){
+  var container=document.getElementById('ohmap-container');
+
+  var dayMap={}, maxCount=0;
+  (days||[]).forEach(function(d){
+    dayMap[d.date]=d;
+    if(d.order_count>maxCount) maxCount=d.order_count;
+  });
+
+  var startD=new Date(startStr+'T00:00:00');
+  var endD  =new Date(endStr  +'T00:00:00');
+  var today =new Date(); today.setHours(0,0,0,0);
+  if(endD>today) endD=new Date(today);
+
+  // Snap to week boundaries (Sun–Sat)
+  var gStart=new Date(startD); gStart.setDate(gStart.getDate()-gStart.getDay());
+  var gEnd  =new Date(endD);   gEnd.setDate(gEnd.getDate()+(6-gEnd.getDay()));
+  var totalWeeks=Math.ceil((Math.round((gEnd-gStart)/86400000)+1)/7);
+
+  var SZ=13, GAP=2, STEP=15;
+  var h='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px">';
+  h+='<div style="display:inline-flex;align-items:flex-start;gap:4px">';
+
+  // Day labels (every other row)
+  h+='<div style="display:flex;flex-direction:column;gap:'+GAP+'px;padding-top:'+(18+GAP)+'px;flex-shrink:0">';
+  _HMAP_DAYS.forEach(function(day,i){
+    h+='<div style="height:'+SZ+'px;line-height:'+SZ+'px;font-size:9px;color:var(--ink-soft);text-align:right;white-space:nowrap">'+(i%2===0?day:'')+'</div>';
+  });
+  h+='</div>';
+
+  // Grid area
+  h+='<div style="flex-shrink:0">';
+
+  // Month labels
+  h+='<div style="position:relative;height:18px;margin-bottom:'+GAP+'px">';
+  var lastM=-1;
+  for(var w=0;w<totalWeeks;w++){
+    var wDate=new Date(gStart); wDate.setDate(gStart.getDate()+w*7);
+    var m=wDate.getMonth();
+    if(m!==lastM){
+      h+='<span style="position:absolute;left:'+(w*STEP)+'px;font-size:9.5px;color:var(--ink-soft);white-space:nowrap;bottom:0">'+_HMAP_MONTHS[m]+'</span>';
+      lastM=m;
+    }
+  }
+  h+='</div>';
+
+  // Cell grid
+  h+='<div style="display:grid;grid-template-rows:repeat(7,'+SZ+'px);grid-auto-columns:'+SZ+'px;grid-auto-flow:column;gap:'+GAP+'px">';
+  for(var w=0;w<totalWeeks;w++){
+    for(var di=0;di<7;di++){
+      var cDate=new Date(gStart); cDate.setDate(gStart.getDate()+w*7+di);
+      var dt=_ohmapYmd(cDate);
+      var info=dayMap[dt]||{order_count:0,total_qty:0};
+      var cnt=info.order_count, qty=info.total_qty;
+      var inRange=(cDate>=startD&&cDate<=endD);
+      var clr=_oHeatColor(cnt,maxCount);
+      h+='<div class="hmap-cell"'
+        +' data-date="'+dt+'"'
+        +' data-count="'+cnt+'"'
+        +' data-qty="'+qty+'"'
+        +' data-mi="'+cDate.getMonth()+'"'
+        +' onmouseenter="oHmapShow(this,event)" onmouseleave="hmapHide()" onmousemove="hmapMove(event)"'
+        +(cnt>0?' data-clickable="1" onclick="ohmapCellClick(this.dataset.date)"':'')
+        +' style="border-radius:2px;cursor:'+(cnt>0?'pointer':'default')
+        +';background:'+clr+';opacity:'+(inRange?'1':'0.28')+'"></div>';
+    }
+  }
+  h+='</div>'; // /cell grid
+
+  // Legend
+  h+='<div style="display:flex;align-items:center;gap:3px;margin-top:7px;font-size:10px;color:var(--ink-soft)">';
+  h+='<span style="margin-right:2px">কম</span>';
+  _HMAP_CLR.forEach(function(c){ h+='<div style="width:11px;height:11px;border-radius:2px;background:'+c+'"></div>'; });
+  h+='<span style="margin-left:2px">বেশি</span>';
+  if(maxCount>0) h+='<span style="margin-left:8px">সর্বোচ্চ: <strong>'+toBanglaNum(maxCount)+'</strong> অর্ডার/দিন</span>';
+  h+='</div>';
+
+  h+='</div>'; // /grid area
+  h+='</div>'; // /inline-flex
+  h+='</div>'; // /scroll wrapper
+
+  if(!days||!days.length){
+    h='<div style="text-align:center;color:var(--ink-soft);padding:24px;font-size:13px">এই সময়ে কোনো অর্ডার পাওয়া যায়নি।</div>';
+  }
+  container.innerHTML=h;
+}
+
+function oHmapShow(el,e){
+  if(!_hmapTT){
+    _hmapTT=document.createElement('div');
+    _hmapTT.className='hmap-tt';
+    document.body.appendChild(_hmapTT);
+  }
+  var dt=el.getAttribute('data-date');
+  var cnt=+el.getAttribute('data-count');
+  var qty=+el.getAttribute('data-qty');
+  var mi=+el.getAttribute('data-mi');
+  var pd=new Date(dt+'T00:00:00');
+  var dateStr=toBanglaNum(pd.getDate())+' '+_HMAP_MFULL[mi]+', '+toBanglaNum(pd.getFullYear());
+  var orderStr=cnt===0?'কোনো অর্ডার নেই':toBanglaNum(cnt)+'টি অর্ডার';
+  var inner='<strong>'+dateStr+'</strong><br>'+orderStr;
+  if(cnt>0){
+    inner+='<br><span style="color:#d4d4d4;font-size:11px">'+toBanglaNum(qty)+' পিস';
+    if(el.getAttribute('data-clickable')==='1') inner+=' · ক্লিক করুন বিস্তারিত দেখতে';
+    inner+='</span>';
+  }
+  _hmapTT.innerHTML=inner;
+  _hmapTT.style.display='block';
+  hmapMove(e);
+}
+
+async function ohmapCellClick(date){
+  var modal=document.getElementById('order-day-modal');
+  modal.style.display='flex';
+  document.getElementById('ohmap-modal-title').textContent='লোড হচ্ছে...';
+  document.getElementById('ohmap-modal-summary').innerHTML='<div style="text-align:center;color:var(--ink-soft);padding:16px">লোড হচ্ছে...</div>';
+  document.getElementById('ohmap-modal-orders').innerHTML='';
+
+  try{
+    var r=await fetch('/api/orders/day?date='+date);
+    var data=await r.json();
+    if(!r.ok) throw new Error(data.detail||'সার্ভার ত্রুটি');
+
+    var pd=new Date(date+'T00:00:00');
+    var mi=pd.getMonth();
+    var dateStr=toBanglaNum(pd.getDate())+' '+_HMAP_MFULL[mi]+' '+toBanglaNum(pd.getFullYear());
+    document.getElementById('ohmap-modal-title').textContent=dateStr+'-এর অর্ডার';
+
+    var orders=data.orders||[];
+    var totalQty=orders.reduce(function(s,o){ return s+o.total_qty; },0);
+    var totalAmt=orders.reduce(function(s,o){ return s+o.total_amount; },0);
+
+    document.getElementById('ohmap-modal-summary').innerHTML=
+      '<div class="ohmap-mstat"><div class="n">'+toBanglaNum(orders.length)+'</div><div class="l">মোট অর্ডার</div></div>'+
+      '<div class="ohmap-mstat"><div class="n">'+toBanglaNum(totalQty)+'</div><div class="l">মোট পিস</div></div>'+
+      '<div class="ohmap-mstat"><div class="n" style="font-size:16px">'+money(totalAmt)+'</div><div class="l">মোট বিক্রয়</div></div>';
+
+    if(!orders.length){
+      document.getElementById('ohmap-modal-orders').innerHTML='<p style="color:var(--ink-soft);font-size:13px;margin-top:4px">এই তারিখে কোনো অর্ডার নেই।</p>';
+      return;
+    }
+
+    var t='<table class="mini-tbl" style="margin-top:4px"><thead><tr>';
+    t+='<th>ইনভয়েস</th><th>কাস্টমার</th><th>পণ্য</th><th>পিস</th><th>টাকা</th><th>স্ট্যাটাস</th></tr></thead><tbody>';
+    orders.forEach(function(o){
+      var prods=(o.products||[]).map(function(p){ return esc(p.name)+(p.qty>1?' ×'+p.qty:''); }).join(', ');
+      var su=(o.status||'').toUpperCase();
+      var sc=su.includes('DELIVER')||su.includes('COMPLET')?'st-green':su.includes('CANCEL')||su.includes('FLAG')||su.includes('RETURN')?'st-red':'st-amber';
+      t+='<tr>';
+      t+='<td style="font-family:var(--mono);font-size:11.5px;white-space:nowrap">'+esc(o.invoice)+'</td>';
+      t+='<td><div style="font-size:12.5px">'+esc(o.customer_name)+'</div><div style="font-family:var(--mono);font-size:10.5px;color:var(--ink-soft)">'+esc(o.customer_phone)+'</div></td>';
+      t+='<td style="max-width:200px;font-size:12px">'+prods+'</td>';
+      t+='<td style="font-family:var(--mono)">'+o.total_qty+'</td>';
+      t+='<td style="font-family:var(--mono)">'+money(o.total_amount)+'</td>';
+      t+='<td><span class="sb '+sc+'">'+esc(o.status)+'</span>'+(o.sub_status?'<br><span style="font-size:10.5px;color:var(--ink-soft)">'+esc(o.sub_status)+'</span>':'')+'</td>';
+      t+='</tr>';
+    });
+    t+='</tbody></table>';
+    document.getElementById('ohmap-modal-orders').innerHTML=t;
+  }catch(e){
+    document.getElementById('ohmap-modal-title').textContent='ত্রুটি';
+    document.getElementById('ohmap-modal-summary').innerHTML='';
+    document.getElementById('ohmap-modal-orders').innerHTML='<div class="err-note">লোড করা যাচ্ছে না: '+esc(e.message)+'</div>';
+  }
+}
+
+function closeOrderDayModal(){
+  document.getElementById('order-day-modal').style.display='none';
+}
+function ohmapOverlayClick(e){
+  if(e.target===e.currentTarget) closeOrderDayModal();
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape') closeOrderDayModal();
+});
+</script>
+</body>
+</html>
