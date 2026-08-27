@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GhorerBazar Customer 360° Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: { colors: {
+      gbIdentity: '#378ADD', gbTrust: '#639922', gbRisk: '#E24B4A',
+      gbVIP: '#EF9F27', gbProducts: '#D85A30', gbCall: '#7F77DD', gbDelivery: '#1D9E75',
+    }}}
+  }
+</script>
+<style>
+  .tier-gold-edge { border-left: 6px solid #EF9F27; background: linear-gradient(135deg, rgba(239,159,39,0.05) 0%, rgba(255,255,255,1) 100%); }
+  .tier-green-edge { border-left: 6px solid #639922; background: linear-gradient(135deg, rgba(99,153,34,0.05) 0%, rgba(255,255,255,1) 100%); }
+  .tier-red-edge { border-left: 6px solid #E24B4A; background: linear-gradient(135deg, rgba(226,75,74,0.05) 0%, rgba(255,255,255,1) 100%); }
+
+  .heatmap-grid { display: grid; grid-template-rows: repeat(7, 17px); grid-auto-flow: column; grid-auto-columns: 17px; gap: 4px; }
+  .heatmap-cell { width: 17px; height: 17px; border-radius: 3px; border: 0.5px solid rgba(0,0,0,0.08); cursor: pointer; transition: transform .1s; display: flex; align-items: center; justify-content: center; }
+  .heatmap-cell:hover { transform: scale(1.3); outline: 1.5px solid #334155; z-index: 5; position: relative; }
+  .heatmap-date { font-size: 8px; line-height: 1; font-weight: 700; opacity: .55; pointer-events: none; user-select: none; }
+  .heatmap-date.on-dark { color: #ffffff; }
+  .heatmap-date.on-light { color: #0f172a; }
+
+  #toast { transition: opacity .25s, transform .25s; }
+  .fade-in { animation: fadeIn .18s ease-out; }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(-4px);} to {opacity:1; transform:translateY(0);} }
+
+  .filter-hidden { display: none !important; }
+  .chevron-rot { transform: rotate(180deg); }
+  .metric-strip-item { min-width: 110px; }
+
+/* ===== Customer 360 agent-friendly shell ===== */
+:root{--gb-sidebar:250px;--gb-border:#e5eaf1;--gb-bg:#f6f8fb;--gb-text:#1f2937;--gb-muted:#64748b}
+html,body{min-height:100%;background:var(--gb-bg)}
+body{font-family:system-ui,-apple-system,"Noto Sans Bengali","Noto Sans",Segoe UI,sans-serif!important;color:var(--gb-text);font-size:14px;line-height:1.55;overflow-x:hidden}
+.gb-left-nav{position:fixed;inset:0 auto 0 0;width:var(--gb-sidebar);height:100vh;background:#fff;border-right:1px solid var(--gb-border);z-index:60;display:flex;flex-direction:column;box-shadow:4px 0 18px rgba(15,23,42,.05)}
+.gb-left-brand{padding:22px 18px 18px;border-bottom:1px solid var(--gb-border)}
+.gb-left-brand .brand-mark{width:38px;height:38px;border-radius:11px;background:#378ADD;color:#fff;display:grid;place-items:center;font-weight:800;letter-spacing:.04em}
+.gb-left-brand h2{font-size:16px;font-weight:800;margin:0;color:#0f172a}.gb-left-brand p{font-size:11px;color:#94a3b8;margin:3px 0 0}
+.gb-left-menu{padding:14px 10px;display:flex;flex-direction:column;gap:5px;overflow:auto}
+.gb-left-item{width:100%;border:0;background:transparent;color:#475569;border-radius:10px;padding:11px 12px;display:flex;align-items:center;gap:11px;text-align:left;font-size:14px;font-weight:650;cursor:pointer;transition:.16s ease}
+.gb-left-item:hover{background:#f1f5f9;color:#1e293b}.gb-left-item.active{background:#eaf3ff;color:#1769aa;box-shadow:inset 3px 0 #378ADD}.gb-left-item i{width:18px;height:18px;flex:none}
+.gb-left-help{margin:auto 10px 14px;padding:12px;border:1px solid #dbeafe;background:#eff6ff;border-radius:10px;color:#1e5b96;font-size:11px;line-height:1.55}
+.gb-left-help strong{display:block;font-size:12px;margin-bottom:3px}
+body>header{margin-left:var(--gb-sidebar)!important;width:calc(100% - var(--gb-sidebar));box-sizing:border-box}
+body>main{margin-left:var(--gb-sidebar)!important;margin-right:0!important;max-width:none!important;padding-left:28px!important;padding-right:28px!important;margin-top:24px!important}
+/* Remove the old horizontal navigation row, while preserving all existing tab content and JS IDs. */
+body>main>section:nth-of-type(4)>div:first-child{display:none!important}
+body>main>section:nth-of-type(4){border-radius:14px!important;border:1px solid var(--gb-border)!important;box-shadow:0 4px 18px rgba(15,23,42,.04)!important}
+body>main>section:nth-of-type(4)>div:last-child{padding:22px!important}
+/* Keep floating action button clear of the sidebar. */
+body>.fixed.bottom-6.right-6{right:22px!important;bottom:22px!important;z-index:45!important}
+/* Agent-readable typography */
+body .text-\[10px\]{font-size:11px!important;line-height:1.45!important}
+body .text-\[11px\]{font-size:12px!important;line-height:1.5!important}
+body .text-xs{font-size:12px!important;line-height:1.5!important}
+body .text-sm{font-size:14px!important;line-height:1.6!important}
+body .text-lg{font-size:18px!important} body .text-xl{font-size:22px!important}
+body .text-2xl{font-size:26px!important}
+body button{font-family:inherit}
+body input{font-family:inherit;font-size:14px!important}
+@media(max-width:900px){:root{--gb-sidebar:220px}body>header{padding-left:18px!important;padding-right:18px!important}body>main{padding-left:18px!important;padding-right:18px!important}}
+@media(max-width:680px){:root{--gb-sidebar:190px}.gb-left-brand{padding:16px 12px}.gb-left-brand p{display:none}.gb-left-item{padding:10px 9px;font-size:12px;gap:8px}.gb-left-help{font-size:10px}.gb-left-help strong{font-size:11px}body>header{padding-left:12px!important;padding-right:12px!important}body>main{padding-left:12px!important;padding-right:12px!important}.gb-left-brand h2{font-size:13px}}
+
+/* ===== Tab strip: bolder active state (targets the exact classes switchTab() already toggles) ===== */
+.tab-btn{transition:background-color .15s ease,box-shadow .15s ease}
+.tab-btn.border-gbIdentity{background:#eaf3ff!important;box-shadow:inset 0 -2px 0 #378ADD}
+.tab-btn:not(.border-gbIdentity):hover{background:#f8fafc!important;color:#334155!important}
+
+</style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans pb-12">
+  <!-- Permanent left navigation: visual-only shell; existing switchTab() remains the source of truth. -->
+  <aside class="gb-left-nav" aria-label="Customer sections">
+    <div class="gb-left-brand">
+      <div class="flex items-center gap-3">
+        <div class="brand-mark">GB</div>
+        <div><h2>কাস্টমার তথ্য</h2><p>প্রয়োজনীয় তথ্য এক জায়গায়</p></div>
+      </div>
+    </div>
+    <nav class="gb-left-menu">
+      <button type="button" class="gb-left-item active" data-side-tab="orders" onclick="switchTab('orders')"><i data-lucide="package"></i><span data-i18n="tabOrders">অর্ডারসমূহ</span></button>
+      <button type="button" class="gb-left-item" data-side-tab="products" onclick="switchTab('products')"><i data-lucide="shopping-bag"></i><span data-i18n="tabProducts">পণ্য পছন্দ</span></button>
+      <button type="button" class="gb-left-item" data-side-tab="calls" onclick="switchTab('calls')"><i data-lucide="phone-call"></i><span data-i18n="tabCalls">কল হিস্ট্রি</span></button>
+      <button type="button" class="gb-left-item" data-side-tab="ai" onclick="document.querySelectorAll('.gb-left-item').forEach(el=>el.classList.remove('active'));this.classList.add('active');document.getElementById('ai-summary-short')?.scrollIntoView({behavior:'smooth',block:'center'});"><i data-lucide="sparkles"></i><span>AI সারাংশ</span></button>
+      <button type="button" class="gb-left-item" data-side-tab="delivery" onclick="switchTab('delivery')"><i data-lucide="truck"></i><span data-i18n="tabDelivery">ডেলিভারি তথ্য</span></button>
+      <button type="button" class="gb-left-item" data-side-tab="channel" onclick="switchTab('channel')"><i data-lucide="credit-card"></i><span data-i18n="tabChannel">চ্যানেল ও পেমেন্ট</span></button>
+    </nav>
+    <div class="gb-left-help"><strong>এজেন্টের জন্য</strong>কাস্টমার খুঁজে তার অর্ডার, পণ্য পছন্দ, কলের তথ্য ও AI সারাংশ এক জায়গা থেকে দেখুন।</div>
+  </aside>
+
+
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 px-6 py-3 flex items-center justify-between shadow-sm gap-4">
+    <div class="flex items-center gap-3 shrink-0">
+      <div class="bg-amber-500 text-white p-2 rounded-lg font-bold text-xl tracking-wider">GB</div>
+      <span class="font-semibold text-lg text-slate-800 hidden md:inline">GhorerBazar <span class="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded">Customer 360°</span></span>
+    </div>
+
+    <div class="flex-1 max-w-md relative">
+      <div class="relative">
+        <i data-lucide="search" class="absolute left-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none"></i>
+        <input id="search-input" type="text" placeholder="ফোন নম্বর দিয়ে খুঁজুন... (Ctrl+K)"
+          class="w-full pl-9 pr-16 py-2 border border-slate-300 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-gbIdentity/50 transition">
+        <button onclick="doSearch()" class="absolute right-1.5 top-1 bg-gbIdentity text-white text-xs font-semibold px-3 py-1.5 rounded-full hover:bg-blue-600 transition" data-i18n="searchBtn">খুঁজুন</button>
+      </div>
+      <div id="search-error" class="hidden absolute mt-1 text-xs text-gbRisk bg-white border border-gbRisk/30 rounded-lg px-3 py-1.5 shadow-sm"></div>
+      <div class="flex items-center gap-1.5 mt-1.5 flex-wrap text-[10px]">
+        <span class="text-slate-400" data-i18n="recentLabel">সাম্প্রতিক:</span>
+        <span id="recent-chips" class="flex gap-1.5 flex-wrap"></span>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-4 shrink-0">
+      <button onclick="toggleLanguage()" class="flex items-center gap-1 bg-slate-100 border border-slate-200 rounded-full p-1 text-xs font-semibold hover:bg-slate-200 transition">
+        <span id="lang-bn" class="bg-white text-slate-800 px-2 py-1 rounded-full shadow-sm">বাং</span>
+        <span id="lang-en" class="text-slate-500 px-2 py-1">EN</span>
+      </button>
+      <div class="h-4 w-[1px] bg-slate-200 hidden sm:block"></div>
+      <div class="items-center gap-2 hidden sm:flex">
+        <div class="w-8 h-8 rounded-full bg-gbIdentity text-white flex items-center justify-center font-bold text-sm">RH</div>
+        <div class="text-xs">
+          <p class="font-bold text-slate-700">রাকিব হাসান</p>
+          <p class="text-slate-400">Agent #104</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-6 mt-6 space-y-6">
+
+    <!-- Snapshot -->
+    <section id="snapshot-card" class="bg-white rounded-xl shadow-sm p-6 relative">
+      <div class="flex flex-col md:flex-row justify-between items-start gap-4">
+        <div class="flex-1">
+          <div class="flex items-center gap-3 flex-wrap">
+            <h1 id="cust-name" class="text-2xl font-bold text-gbIdentity"></h1>
+            <span class="text-xs font-mono bg-slate-100 px-2 py-1 rounded text-slate-600 flex items-center gap-1">
+              <span id="cust-phone"></span>
+              <i data-lucide="copy" class="w-3 h-3 cursor-pointer hover:text-gbIdentity" onclick="copyText(document.getElementById('cust-phone').textContent)"></i>
+            </span>
+            <span id="cust-segment" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-white"></span>
+          </div>
+
+          <!-- Primary address + address count -->
+          <p class="text-sm text-slate-500 mt-1 flex items-center gap-1 flex-wrap">
+            <i data-lucide="map-pin" class="w-4 h-4 text-gbDelivery shrink-0"></i>
+            <span id="cust-address"></span>
+            <i data-lucide="copy" class="w-3.5 h-3.5 cursor-pointer hover:text-gbIdentity shrink-0" onclick="copyText(document.getElementById('cust-address').textContent)"></i>
+            <span id="cust-address-extra" class="text-[10px] text-gbDelivery font-semibold cursor-pointer hover:underline" onclick="switchTab('delivery')"></span>
+          </p>
+
+          <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-slate-500">
+            <span class="flex items-center gap-1"><i data-lucide="calendar-check" class="w-3.5 h-3.5 text-slate-400"></i><span data-i18n="tenureLabel">গ্রাহক থেকে:</span> <span id="cust-tenure" class="font-semibold text-slate-600"></span></span>
+            <span class="flex items-center gap-1"><i data-lucide="clock" class="w-3.5 h-3.5 text-slate-400"></i><span data-i18n="contactTimeLabel">উপযুক্ত সময়:</span> <span id="cust-contact-time" class="font-semibold text-slate-600"></span></span>
+            <span class="flex items-center gap-1"><i data-lucide="heart" class="w-3.5 h-3.5 text-slate-400"></i><span data-i18n="topCategoryLabel">প্রিয় ক্যাটাগরি:</span> <span id="cust-top-category" class="font-semibold text-slate-600"></span></span>
+          </div>
+
+          <!-- Badges -->
+          <div id="badge-row" class="flex flex-wrap gap-2 mt-4"></div>
+
+          <!-- Interested-in cross-sell tags -->
+          <div id="interest-row" class="flex flex-wrap items-center gap-1.5 mt-2"></div>
+        </div>
+
+        <div class="flex flex-col items-end gap-3 shrink-0">
+          <!-- Reliability score gauge -->
+          <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 flex items-center gap-3 w-56">
+            <svg width="44" height="44" viewBox="0 0 44 44">
+              <circle cx="22" cy="22" r="18" fill="none" stroke="#e2e8f0" stroke-width="5"/>
+              <circle id="reliability-ring" cx="22" cy="22" r="18" fill="none" stroke-width="5" stroke-linecap="round" transform="rotate(-90 22 22)"/>
+            </svg>
+            <div>
+              <p class="text-[10px] text-slate-400 font-semibold uppercase" data-i18n="reliabilityLabel">রিলায়েবিলিটি স্কোর</p>
+              <p id="reliability-score" class="text-lg font-bold"></p>
+            </div>
+          </div>
+
+          <div id="due-chip" class="bg-gbRisk/10 border border-gbRisk/30 rounded-lg p-3 flex items-center gap-3 w-56">
+            <div class="p-2 bg-gbRisk text-white rounded-lg"><i data-lucide="wallet" class="w-5 h-5"></i></div>
+            <div>
+              <p class="text-xs text-gbRisk font-semibold uppercase" data-i18n="dueLabel">বকেয়া পরিমাণ</p>
+              <p id="due-amount" class="text-lg font-bold text-gbRisk"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Summary -->
+      <div class="mt-5 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200/60 rounded-xl p-4">
+        <div class="flex items-start gap-3">
+          <i data-lucide="sparkles" class="w-5 h-5 text-gbCall shrink-0 mt-0.5"></i>
+          <div class="text-sm text-slate-700 flex-1">
+            <p id="ai-summary-short" class="font-medium italic"></p>
+            <button onclick="toggleAISummary()" class="text-xs text-gbCall font-bold mt-1 inline-flex items-center gap-1 hover:underline">
+              <span id="ai-summary-toggle-label"></span> <i data-lucide="chevron-down" id="ai-summary-chevron" class="w-3 h-3 transition-transform"></i>
+            </button>
+            <div id="ai-summary-full" class="hidden mt-3 space-y-2 border-t border-purple-200/60 pt-3"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Metric Cards -->
+    <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div onclick="switchTab('orders')" class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow cursor-pointer hover:border-gbIdentity/40 transition">
+        <div class="flex justify-between items-center text-slate-400 mb-2"><span class="text-xs font-semibold" data-i18n="mTotalOrders">মোট অর্ডার</span><i data-lucide="package" class="w-4 h-4 text-gbIdentity"></i></div>
+        <p id="m-total-orders" class="text-2xl font-bold text-slate-800"></p>
+        <span class="text-[10px] text-gbTrust flex items-center gap-0.5 font-medium mt-1" data-i18n="mTotalOrdersTrend">↑ ৫% গড়ের চেয়ে বেশি</span>
+      </div>
+      <div onclick="switchTab('orders')" class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow cursor-pointer hover:border-gbVIP/40 transition">
+        <div class="flex justify-between items-center text-slate-400 mb-2"><span class="text-xs font-semibold" data-i18n="mLtv">লাইফটাইম ভ্যালু</span><i data-lucide="star" class="w-4 h-4 text-gbVIP"></i></div>
+        <p id="m-ltv" class="text-2xl font-bold text-slate-800"></p>
+        <span class="text-[10px] text-slate-400 font-medium mt-1" data-i18n="mLtvSub">Top 5% Customer</span>
+      </div>
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+        <div class="flex justify-between items-center text-slate-400 mb-2"><span class="text-xs font-semibold" data-i18n="mAov">AOV (গড় অর্ডার)</span><i data-lucide="shopping-bag" class="w-4 h-4 text-gbProducts"></i></div>
+        <p id="m-aov" class="text-2xl font-bold text-slate-800"></p>
+        <span class="text-[10px] text-gbTrust flex items-center gap-0.5 font-medium mt-1" data-i18n="mAovSub">↑ স্ট্যাবল</span>
+      </div>
+      <div onclick="switchTab('orders','cancelled')" class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow cursor-pointer hover:border-gbRisk/40 transition">
+        <div class="flex justify-between items-center text-slate-400 mb-2"><span class="text-xs font-semibold" data-i18n="mCancelRate">বাতিলের হার</span><i data-lucide="alert-circle" class="w-4 h-4 text-gbRisk"></i></div>
+        <p id="m-cancel-rate" class="text-2xl font-bold text-gbRisk"></p>
+        <span class="text-[10px] text-gbTrust font-medium mt-1" data-i18n="mCancelSub">নিচে ক্লিক করে ফিল্টার দেখুন</span>
+      </div>
+      <div onclick="switchTab('orders','returned')" class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow cursor-pointer hover:border-gbRisk/40 transition">
+        <div class="flex justify-between items-center text-slate-400 mb-2"><span class="text-xs font-semibold" data-i18n="mReturnRate">রিটার্ন হার</span><i data-lucide="refresh-cw" class="w-4 h-4 text-gbRisk"></i></div>
+        <p id="m-return-rate" class="text-2xl font-bold text-gbRisk"></p>
+        <span class="text-[10px] text-gbRisk font-medium mt-1" data-i18n="mReturnSub">নিচে ক্লিক করে ফিল্টার দেখুন</span>
+      </div>
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+        <div class="flex justify-between items-center text-slate-400 mb-2"><span class="text-xs font-semibold" data-i18n="mLastOrder">সর্বশেষ অর্ডার</span><i data-lucide="calendar" class="w-4 h-4 text-gbCall"></i></div>
+        <p id="m-recency" class="text-2xl font-bold text-slate-800"></p>
+        <span id="m-last-order-date" class="text-[10px] text-slate-400 font-medium mt-1"></span>
+      </div>
+    </section>
+
+    <!-- Heatmaps -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+        <div class="flex justify-between items-center mb-3">
+          <div class="flex items-center gap-2"><i data-lucide="calendar-days" class="w-4 h-4 text-gbTrust"></i><h3 class="font-bold text-sm text-slate-700" data-i18n="orderHeatmapTitle">অর্ডার অ্যাক্টিভিটি (গত ৩ মাস)</h3></div>
+          <div class="flex items-center gap-1 text-[10px] text-slate-400">
+            <span data-i18n="low">কম</span>
+            <span class="w-2.5 h-2.5 rounded-sm bg-slate-100 inline-block"></span>
+            <span class="w-2.5 h-2.5 rounded-sm bg-lime-200 inline-block"></span>
+            <span class="w-2.5 h-2.5 rounded-sm bg-lime-400 inline-block"></span>
+            <span class="w-2.5 h-2.5 rounded-sm bg-lime-600 inline-block"></span>
+            <span data-i18n="high">বেশি</span>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <div class="inline-block">
+            <div id="order-heatmap-months" class="text-[10px] text-slate-400 flex justify-between w-full pl-9 mb-1"></div>
+            <div class="flex gap-2 items-center">
+              <div class="text-[9px] text-slate-400 flex flex-col justify-between h-[143px] w-7 shrink-0 text-center"><span data-i18n="mon">সোম</span><span data-i18n="wed">বুধ</span><span data-i18n="fri">শুক্র</span></div>
+              <div class="heatmap-grid" id="order-heatmap"></div>
+            </div>
+          </div>
+        </div>
+        <p class="text-[10px] text-slate-400 mt-2 flex items-center gap-1"><i data-lucide="mouse-pointer-click" class="w-3 h-3"></i><span data-i18n="heatmapHint">যেকোনো সেলে ক্লিক করে সেই দিনের বিস্তারিত দেখুন</span></p>
+      </div>
+
+      <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+        <div class="flex justify-between items-center mb-3">
+          <div class="flex items-center gap-2"><i data-lucide="phone" class="w-4 h-4 text-gbCall"></i><h3 class="font-bold text-sm text-slate-700" data-i18n="callHeatmapTitle">কল অ্যাক্টিভিটি ও রেসপন্স (গত ৩ মাস)</h3></div>
+          <div class="flex items-center gap-1 text-[10px] text-slate-400">
+            <span data-i18n="negative">নেগেটিভ</span>
+            <span class="w-2.5 h-2.5 rounded-sm bg-red-300 inline-block"></span>
+            <span class="w-2.5 h-2.5 rounded-sm bg-purple-200 inline-block"></span>
+            <span class="w-2.5 h-2.5 rounded-sm bg-purple-500 inline-block"></span>
+            <span data-i18n="positive">পজিটিভ</span>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <div class="inline-block">
+            <div id="call-heatmap-months" class="text-[10px] text-slate-400 flex justify-between w-full pl-9 mb-1"></div>
+            <div class="flex gap-2 items-center">
+              <div class="text-[9px] text-slate-400 flex flex-col justify-between h-[143px] w-7 shrink-0 text-center"><span data-i18n="mon">সোম</span><span data-i18n="wed">বুধ</span><span data-i18n="fri">শুক্র</span></div>
+              <div class="heatmap-grid" id="call-heatmap"></div>
+            </div>
+          </div>
+        </div>
+        <p class="text-[10px] text-slate-400 mt-2 flex items-center gap-1"><i data-lucide="mouse-pointer-click" class="w-3 h-3"></i><span data-i18n="heatmapHint">যেকোনো সেলে ক্লিক করে সেই দিনের বিস্তারিত দেখুন</span></p>
+      </div>
+    </section>
+
+    <!-- Tabs -->
+    <section class="bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow overflow-hidden">
+      <div class="flex border-b border-slate-200 bg-slate-50/50 overflow-x-auto">
+        <button onclick="switchTab('orders')" id="tab-btn-orders" class="tab-btn flex items-center gap-2 px-6 py-3.5 text-sm font-semibold border-b-2 whitespace-nowrap">
+          <i data-lucide="package" class="w-4 h-4"></i> <span data-i18n="tabOrders">অর্ডারসমূহ</span>
+        </button>
+        <button onclick="switchTab('products')" id="tab-btn-products" class="tab-btn flex items-center gap-2 px-6 py-3.5 text-sm font-semibold border-b-2 whitespace-nowrap">
+          <i data-lucide="shopping-bag" class="w-4 h-4"></i> <span data-i18n="tabProducts">পণ্য পছন্দ</span>
+        </button>
+        <button onclick="switchTab('calls')" id="tab-btn-calls" class="tab-btn flex items-center gap-2 px-6 py-3.5 text-sm font-semibold border-b-2 whitespace-nowrap">
+          <i data-lucide="phone-call" class="w-4 h-4"></i> <span data-i18n="tabCalls">কল হিস্ট্রি</span>
+        </button>
+        <button onclick="switchTab('delivery')" id="tab-btn-delivery" class="tab-btn flex items-center gap-2 px-6 py-3.5 text-sm font-semibold border-b-2 whitespace-nowrap">
+          <i data-lucide="truck" class="w-4 h-4"></i> <span data-i18n="tabDelivery">ডেলিভারি তথ্য</span>
+        </button>
+        <button onclick="switchTab('channel')" id="tab-btn-channel" class="tab-btn flex items-center gap-2 px-6 py-3.5 text-sm font-semibold border-b-2 whitespace-nowrap">
+          <i data-lucide="credit-card" class="w-4 h-4"></i> <span data-i18n="tabChannel">চ্যানেল ও পেমেন্ট</span>
+        </button>
+      </div>
+
+      <div class="p-6">
+        <!-- Orders -->
+        <div id="tab-content-orders" class="tab-content space-y-3">
+          <div id="orders-summary-cards" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
+          <div id="orders-filter-chip" class="hidden items-center gap-2 bg-gbRisk/10 border border-gbRisk/30 text-gbRisk text-xs font-semibold px-3 py-1.5 rounded-lg">
+            <i data-lucide="filter" class="w-3.5 h-3.5"></i>
+            <span id="orders-filter-label"></span>
+            <button onclick="switchTab('orders')" class="ml-2 underline" data-i18n="clearFilter">ফিল্টার মুছুন</button>
+          </div>
+          <div id="orders-list" class="space-y-2"></div>
+          <p id="orders-empty" class="hidden text-sm text-slate-400 text-center py-6" data-i18n="noOrdersMatch">এই ফিল্টারে কোনো অর্ডার নেই</p>
+          <button id="orders-show-more-btn" onclick="toggleOrdersShowAll()" class="hidden w-full text-center text-xs font-semibold text-gbIdentity border border-gbIdentity/30 bg-gbIdentity/5 hover:bg-gbIdentity/10 rounded-lg py-2 transition"></button>
+          <div id="orders-summary-line" class="text-xs text-slate-600 bg-blue-50/60 border border-blue-100 rounded-lg p-3 flex items-start gap-2"></div>
+        </div>
+
+        <!-- Products -->
+        <div id="tab-content-products" class="tab-content hidden space-y-3">
+          <div id="products-metric-strip" class="flex flex-wrap gap-3 mb-1"></div>
+          <div id="products-list" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+          <button id="products-show-more-btn" onclick="toggleProductsShowAll()" class="hidden w-full text-center text-xs font-semibold rounded-lg py-2 transition hover:bg-slate-50" style="color:#D85A30;border:1px solid #D85A3055;background:#D85A300D"></button>
+          <div id="products-summary-line" class="text-xs text-slate-600 bg-coral-50 border rounded-lg p-3 flex items-start gap-2" style="background:#FAECE7;border-color:#F0997B33"></div>
+        </div>
+
+        <!-- Calls -->
+        <div id="tab-content-calls" class="tab-content hidden space-y-3">
+          <div id="calls-metric-strip" class="flex flex-wrap gap-3 mb-1"></div>
+          <div id="calls-status-chart" class="p-4 border rounded-lg"></div>
+          <div id="calls-status-summary-line" class="text-xs text-slate-600 border rounded-lg p-3 flex items-start gap-2" style="background:#EFEDFC;border-color:#7F77DD33"></div>
+
+          <div>
+            <p class="font-bold text-sm text-slate-700 mb-2 flex items-center gap-2"><i data-lucide="history" class="w-4 h-4 text-gbCall"></i> <span data-i18n="callStatusHistoryTitle">সাম্প্রতিক স্ট্যাটাস</span></p>
+            <div id="calls-status-list" class="space-y-4"></div>
+            <div id="calls-status-list-note" class="text-[11px] text-slate-400 mt-1"></div>
+          </div>
+
+          <div>
+            <p class="font-bold text-sm text-slate-700 mb-2 flex items-center gap-2"><i data-lucide="message-square-text" class="w-4 h-4 text-gbCall"></i> <span data-i18n="callRemarksTitle">সাম্প্রতিক মন্তব্য</span></p>
+            <div id="calls-remarks-list" class="space-y-3"></div>
+            <p id="calls-remarks-empty" class="hidden text-xs text-slate-400" data-i18n="callRemarksEmpty">কোনো উল্লেখযোগ্য মন্তব্য পাওয়া যায়নি।</p>
+            <div id="calls-remarks-list-note" class="text-[11px] text-slate-400 mt-1"></div>
+          </div>
+
+          <div id="calls-summary-line" class="text-xs text-slate-700 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200/60 rounded-lg p-3 flex items-start gap-2"></div>
+        </div>
+
+        <!-- Delivery -->
+        <div id="tab-content-delivery" class="tab-content hidden space-y-3">
+          <div id="delivery-metric-strip" class="flex flex-wrap gap-3 mb-1"></div>
+          <div id="delivery-content"></div>
+          <div id="delivery-summary-line" class="text-xs text-slate-600 border rounded-lg p-3 flex items-start gap-2" style="background:#E1F5EE;border-color:#5DCAA555"></div>
+        </div>
+
+        <!-- Channel & Payment -->
+        <div id="tab-content-channel" class="tab-content hidden grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Agent Action Panel -->
+  <div class="fixed bottom-6 right-6 z-40">
+    <button onclick="toggleActionPanel()" class="bg-gbIdentity hover:bg-blue-600 text-white p-4 rounded-full shadow-lg flex items-center gap-2 font-bold transition">
+      <i data-lucide="edit-3" class="w-5 h-5"></i><span data-i18n="actionPanelBtn">অ্যাকশন প্যানেল</span>
+    </button>
+  </div>
+
+  <div id="action-drawer" class="fixed inset-y-0 right-0 w-80 md:w-96 bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 p-6 flex flex-col justify-between">
+    <div>
+      <div class="flex justify-between items-center border-b pb-3 mb-4">
+        <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2"><i data-lucide="phone-outgoing" class="w-5 h-5 text-gbIdentity"></i> <span data-i18n="actionPanelTitle">কল রেজাল্ট সেভ করুন</span></h3>
+        <button onclick="toggleActionPanel()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-2" data-i18n="callStatusLabel">কলের স্ট্যাটাস</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button class="status-btn border border-slate-200 text-xs py-2 rounded font-semibold hover:border-gbTrust hover:text-gbTrust" data-i18n="statusInterested">Interested</button>
+            <button class="status-btn border border-slate-200 text-xs py-2 rounded font-semibold hover:border-gbRisk hover:text-gbRisk" data-i18n="statusNotInterested">Not Interested</button>
+            <button class="status-btn border border-slate-200 text-xs py-2 rounded font-semibold hover:border-slate-400" data-i18n="statusUnreachable">Unreachable</button>
+            <button class="status-btn border border-slate-200 text-xs py-2 rounded font-semibold hover:border-gbVIP hover:text-gbVIP" data-i18n="statusCallback">Callback Request</button>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1" data-i18n="remarkLabel">এজেন্ট রিমার্ক (Remark)</label>
+          <textarea id="remark-box" rows="3" data-i18n-placeholder="remarkPlaceholder" placeholder="কাস্টমারের সাথে আলোচনার সংক্ষিপ্ত বিবরণ লিখুন..." class="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-gbIdentity focus:outline-none"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1" data-i18n="followupLabel">পরবর্তী ফলো-আপ তারিখ</label>
+          <input type="date" class="w-full border border-slate-300 rounded-lg p-2 text-xs text-slate-600">
+        </div>
+      </div>
+    </div>
+    <button onclick="saveAction()" class="w-full bg-gbTrust hover:bg-green-700 text-white py-3 rounded-lg font-bold text-sm shadow transition flex items-center justify-center gap-2">
+      <i data-lucide="check-circle" class="w-4 h-4"></i> <span data-i18n="saveBtn">সংরক্ষণ করুন</span>
+    </button>
+  </div>
+
+  <!-- Day detail drawer -->
+  <div id="day-drawer" class="fixed inset-y-0 right-0 w-80 md:w-96 bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 p-6 overflow-y-auto">
+    <div class="flex justify-between items-center border-b pb-3 mb-4">
+      <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2"><i data-lucide="calendar-days" class="w-5 h-5 text-gbTrust"></i> <span id="day-drawer-title"></span></h3>
+      <button onclick="closeDayDrawer()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <div id="day-drawer-content" class="space-y-3 text-sm"></div>
+  </div>
+  <div id="drawer-backdrop" onclick="closeAllDrawers()" class="hidden fixed inset-0 bg-black/20 z-40"></div>
+
+  <!-- Toast -->
+  <div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-sm px-4 py-2.5 rounded-lg shadow-lg z-[60] flex items-center gap-2">
+    <i data-lucide="check" class="w-4 h-4"></i><span id="toast-text"></span>
+  </div>
+
+  <!-- Loading overlay (API fetch in progress) -->
+  <div id="loading-overlay" class="hidden fixed inset-0 bg-white/60 z-[70] flex items-center justify-center">
+    <div class="flex items-center gap-2 bg-white shadow-lg rounded-full px-4 py-2.5 border border-slate-200">
+      <i data-lucide="loader-2" class="w-4 h-4 animate-spin text-gbIdentity"></i>
+      <span class="text-sm font-semibold text-slate-600" id="loading-text">Loading...</span>
+    </div>
+  </div>
+
+<script>
+/* ============ i18n labels ============ */
+const LABELS = {
+  bn: {
+    searchBtn:'খুঁজুন', recentLabel:'সাম্প্রতিক:', dueLabel:'বকেয়া পরিমাণ', reliabilityLabel:'রিলায়েবিলিটি স্কোর',
+    mTotalOrders:'মোট অর্ডার', mTotalOrdersTrend:'↑ ৫% গড়ের চেয়ে বেশি',
+    mLtv:'লাইফটাইম ভ্যালু', mLtvSub:'Top 5% Customer',
+    mAov:'AOV (গড় অর্ডার)', mAovSub:'↑ স্ট্যাবল',
+    mCancelRate:'বাতিলের হার', mCancelSub:'নিচে ক্লিক করে ফিল্টার দেখুন',
+    mReturnRate:'রিটার্ন হার', mReturnSub:'নিচে ক্লিক করে ফিল্টার দেখুন',
+    mLastOrder:'সর্বশেষ অর্ডার',
+    orderHeatmapTitle:'অর্ডার অ্যাক্টিভিটি (গত ৩ মাস)', callHeatmapTitle:'কল অ্যাক্টিভিটি ও রেসপন্স (গত ৩ মাস)',
+    low:'কম', high:'বেশি', negative:'নেগেটিভ', positive:'পজিটিভ',
+    mon:'সোম', wed:'বুধ', fri:'শুক্র',
+    heatmapHint:'যেকোনো সেলে ক্লিক করে সেই দিনের বিস্তারিত দেখুন',
+    tabOrders:'অর্ডারসমূহ', tabProducts:'পণ্য পছন্দ', tabCalls:'কল হিস্ট্রি', tabDelivery:'ডেলিভারি তথ্য', tabChannel:'চ্যানেল ও পেমেন্ট',
+    clearFilter:'ফিল্টার মুছুন', noOrdersMatch:'এই ফিল্টারে কোনো অর্ডার নেই',
+    actionPanelBtn:'অ্যাকশন প্যানেল', actionPanelTitle:'কল রেজাল্ট সেভ করুন',
+    callStatusLabel:'কলের স্ট্যাটাস', statusInterested:'Interested', statusNotInterested:'Not Interested', statusUnreachable:'Unreachable', statusCallback:'Callback Request',
+    remarkLabel:'এজেন্ট রিমার্ক (Remark)', remarkPlaceholder:'কাস্টমারের সাথে আলোচনার সংক্ষিপ্ত বিবরণ লিখুন...',
+    followupLabel:'পরবর্তী ফলো-আপ তারিখ', saveBtn:'সংরক্ষণ করুন',
+    tenureLabel:'গ্রাহক থেকে:', contactTimeLabel:'উপযুক্ত সময়:', topCategoryLabel:'প্রিয় ক্যাটাগরি:',
+    aiDetailsShow:'বিস্তারিত দেখুন', aiDetailsHide:'বিস্তারিত লুকান',
+    searchNotFound:'এই নম্বরে কোনো গ্রাহক পাওয়া যায়নি — চেষ্টা করুন: 01712345678, 01898765432, 01911223344',
+    copyToast:'কপি হয়েছে', saveToast:'রিমার্ক সফলভাবে সংরক্ষিত হয়েছে!',
+    filterAtRisk:'বাতিল/রিটার্ন অর্ডার দেখানো হচ্ছে',
+    statusDelivered:'Delivered', statusCancelled:'Cancelled', statusReturned:'Returned', statusInTransit:'In-Transit',
+    totalAmountLabel:'মোট বিক্রয়', discountLabel:'ছাড়', reasonPrefix:'কারণ',
+    totalQtyLabel:'মোট পণ্য পরিমাণ', orderDateFieldLabel:'অর্ডারের তারিখ',
+    orderStatusFieldLabel:'স্ট্যাটাস', paymentMethodFieldLabel:'পেমেন্ট মেথড', productNameColLabel:'পণ্যের নাম',
+    dayOrdersTitle:'অর্ডার', dayCallsTitle:'কল', noDayData:'এই দিনে কোনো কার্যকলাপ পাওয়া যায়নি',
+    paymentMethodTitle:'পেমেন্ট মেথড ব্রেকডাউন', channelTitle:'অর্ডার চ্যানেল ব্রেকডাউন',
+    avgDeliveryTitle:'গড় ডেলিভারি সময়', days:'দিন',
+    invoiceLabel:'ইনভয়েস', itemsLabel:'আইটেম', qtyLabel:'পরিমাণ', unitPriceLabel:'একক মূল্য', lineTotalLabel:'সাবটোটাল',
+    deliveryFeeLabel:'ডেলিভারি চার্জ', paidLabel:'পরিশোধিত', dueLabelShort:'বকেয়া', courierLabel:'কুরিয়ার',
+    addressesLabel:'টি ঠিকানা', primaryAddr:'প্রধান',
+    ordersCountLabel:'ইনভয়েস সংখ্যা', deliveredLabel:'ডেলিভার্ড', cancelledLabel:'বাতিল', returnedLabel:'রিটার্ন', avgDeliveryShort:'গড় ডেলিভারি',
+    uniqueProductsLabel:'ইউনিক প্রোডাক্ট', topCategoryPctLabel:'প্রিয় ক্যাটাগরি', avgBasketLabel:'গড় বাস্কেট সাইজ', highestOrderLabel:'সর্বোচ্চ অর্ডার',
+    returnedCountLabel:'রিটার্ন', boughtCountLabel:'বার কেনা হয়েছে',
+    totalAttemptsLabel:'মোট কল প্রচেষ্টা', reachRateLabel:'রিচেবিলিটি', conversionLabel:'কনভার্সন', streakLabel:'পরপর Unreachable',
+    successRateLabel:'সফল ডেলিভারি', topCourierLabel:'প্রধান কুরিয়ার', addrCountLabel:'ঠিকানা সংখ্যা',
+    consentGiven:'মার্কেটিং সম্মতি আছে', doNotCall:'Do Not Call', escalationNeeded:'Escalation প্রয়োজন',
+    interestedInLabel:'আগ্রহী পণ্য:',
+    aiCachedTag:'AI (ক্যাশড)', computedTag:'গণনাকৃত',
+    callStatusChartTitle:'কল স্ট্যাটাস ব্রেকডাউন (সম্পূর্ণ ইতিহাস)',
+    patternMostlyUnreachable:'এই কাস্টমার বেশিরভাগ সময় Unreachable/Switch Off থাকেন — কল করার আগে সময় বদলে দেখুন।',
+    patternRegularOrders:'এই কাস্টমার নিয়মিত অর্ডার করেন — কল করলে ভালো সাড়া পাওয়ার সম্ভাবনা বেশি।',
+    patternNotInterested:'এই কাস্টমার বেশিরভাগ সময় আগ্রহ দেখান না — soft approach ভালো কাজ করতে পারে।',
+    patternMixed:'এই কাস্টমারের কল স্ট্যাটাস মিশ্র — সবচেয়ে বেশি দেখা গেছে "{status}" ({pct}%)।',
+    patternNoData:'এই কাস্টমারের জন্য এখনো কোনো কল ইতিহাস নেই।',
+    callSentence:'{date} তারিখে {agent} কল করেছিলেন। ফলাফল: \'{status}\'।',
+    callRemarkPrefix:'মন্তব্য', unknownAgent:'একজন এজেন্ট',
+    callStatusHistoryTitle:'সাম্প্রতিক স্ট্যাটাস', callRemarksTitle:'সাম্প্রতিক মন্তব্য',
+    callRemarksEmpty:'কোনো উল্লেখযোগ্য মন্তব্য পাওয়া যায়নি।',
+    callRemarkLine:'{date}: \'{remark}\' — {agent}',
+    showingLatestStatuses:'সর্বশেষ {n}টি স্ট্যাটাস দেখানো হচ্ছে (মোট {total}টি)',
+    showingLatestRemarks:'সর্বশেষ {n}টি মন্তব্য দেখানো হচ্ছে (মোট {total}টি)',
+    showMore:'আরও দেখুন (মোট {total}টি)', showLess:'কম দেখুন',
+  },
+  en: {
+    searchBtn:'Search', recentLabel:'Recent:', dueLabel:'Due Amount', reliabilityLabel:'Reliability Score',
+    mTotalOrders:'Total Orders', mTotalOrdersTrend:'↑ 5% above average',
+    mLtv:'Lifetime Value', mLtvSub:'Top 5% Customer',
+    mAov:'AOV (Avg. Order)', mAovSub:'↑ Stable',
+    mCancelRate:'Cancellation Rate', mCancelSub:'Click to filter below',
+    mReturnRate:'Return Rate', mReturnSub:'Click to filter below',
+    mLastOrder:'Last Order',
+    orderHeatmapTitle:'Order Activity (last 3 months)', callHeatmapTitle:'Call Activity & Response (last 3 months)',
+    low:'Low', high:'High', negative:'Negative', positive:'Positive',
+    mon:'Mon', wed:'Wed', fri:'Fri',
+    heatmapHint:'Click any cell to see the details for that day',
+    tabOrders:'Orders', tabProducts:'Product Preference', tabCalls:'Call History', tabDelivery:'Delivery Info', tabChannel:'Channel & Payment',
+    clearFilter:'Clear filter', noOrdersMatch:'No orders match this filter',
+    actionPanelBtn:'Action Panel', actionPanelTitle:'Save Call Result',
+    callStatusLabel:'Call Status', statusInterested:'Interested', statusNotInterested:'Not Interested', statusUnreachable:'Unreachable', statusCallback:'Callback Request',
+    remarkLabel:'Agent Remark', remarkPlaceholder:'Write a short summary of the conversation...',
+    followupLabel:'Next Follow-up Date', saveBtn:'Save',
+    tenureLabel:'Customer since:', contactTimeLabel:'Best time to call:', topCategoryLabel:'Favorite category:',
+    aiDetailsShow:'Show details', aiDetailsHide:'Hide details',
+    searchNotFound:'No customer found for this number — try: 01712345678, 01898765432, 01911223344',
+    copyToast:'Copied', saveToast:'Remark saved successfully!',
+    filterAtRisk:'Showing cancelled/returned orders',
+    statusDelivered:'Delivered', statusCancelled:'Cancelled', statusReturned:'Returned', statusInTransit:'In-Transit',
+    totalAmountLabel:'Total Sale', discountLabel:'Discount', reasonPrefix:'Reason',
+    totalQtyLabel:'Total Quantity', orderDateFieldLabel:'Order Date',
+    orderStatusFieldLabel:'Status', paymentMethodFieldLabel:'Payment Method', productNameColLabel:'Product',
+    dayOrdersTitle:'Orders', dayCallsTitle:'Calls', noDayData:'No activity found on this day',
+    paymentMethodTitle:'Payment Method Breakdown', channelTitle:'Order Channel Breakdown',
+    avgDeliveryTitle:'Avg. Delivery Time', days:'days',
+    invoiceLabel:'Invoice', itemsLabel:'Items', qtyLabel:'Qty', unitPriceLabel:'Unit Price', lineTotalLabel:'Subtotal',
+    deliveryFeeLabel:'Delivery Fee', paidLabel:'Paid', dueLabelShort:'Due', courierLabel:'Courier',
+    addressesLabel:' addresses', primaryAddr:'Primary',
+    ordersCountLabel:'Invoices', deliveredLabel:'Delivered', cancelledLabel:'Cancelled', returnedLabel:'Returned', avgDeliveryShort:'Avg. delivery',
+    uniqueProductsLabel:'Unique products', topCategoryPctLabel:'Top category', avgBasketLabel:'Avg. basket size', highestOrderLabel:'Highest order',
+    returnedCountLabel:'Returned', boughtCountLabel:'times bought',
+    totalAttemptsLabel:'Total call attempts', reachRateLabel:'Reachability', conversionLabel:'Conversion', streakLabel:'Consecutive unreachable',
+    successRateLabel:'Delivery success', topCourierLabel:'Top courier', addrCountLabel:'Addresses',
+    consentGiven:'Marketing consent given', doNotCall:'Do Not Call', escalationNeeded:'Escalation needed',
+    interestedInLabel:'Interested in:',
+    aiCachedTag:'AI (cached)', computedTag:'Computed',
+    callStatusChartTitle:'Call Status Breakdown (full history)',
+    patternMostlyUnreachable:'This customer is unreachable/switched off most of the time — try calling at a different time.',
+    patternRegularOrders:'This customer orders regularly — calls tend to get a good response.',
+    patternNotInterested:'This customer usually shows no interest — a softer approach may work better.',
+    patternMixed:'This customer\'s call outcomes are mixed — most common is "{status}" ({pct}%).',
+    patternNoData:'No call history yet for this customer.',
+    callSentence:'On {date}, {agent} called. Result: \'{status}\'.',
+    callRemarkPrefix:'Note', unknownAgent:'an agent',
+    callStatusHistoryTitle:'Recent Status', callRemarksTitle:'Recent Remarks',
+    callRemarksEmpty:'No meaningful remarks found.',
+    callRemarkLine:'{date}: \'{remark}\' — {agent}',
+    showingLatestStatuses:'Showing latest {n} statuses (of {total} total)',
+    showingLatestRemarks:'Showing latest {n} remarks (of {total} total)',
+    showMore:'Show more (of {total} total)', showLess:'Show less',
+  }
+};
+
+let currentLang = 'bn';
+let currentCustomerKey = null;
+
+/* ============ Demo fallback data (NOT live — see API wiring below) ============ */
+/* Kept only as a reference/offline fixture. The live app never reads
+   from this object; GET /api/customer/{phone} is the real data source. */
+const DEMO_CUSTOMERS_FALLBACK = {
+  '8801712345678': {
+    phone:'+880 1712-345678', name:'আব্দুর রহিম', tier:'gold',
+    addresses:[
+      {bn:'বাড়ি ৪৫, রোড ১২, ব্লক সি, ধানমণ্ডি, ঢাকা', en:'House 45, Road 12, Block C, Dhanmondi, Dhaka', primary:true},
+      {bn:'অফিস: লেভেল ৪, গুলশান ২, ঢাকা', en:'Office: Level 4, Gulshan 2, Dhaka', primary:false},
+    ],
+    segment:{bn:'VIP', en:'VIP'},
+    tenure:{bn:'২০২২ থেকে', en:'Since 2022'},
+    preferredContactTime:{bn:'বিকাল ৩টা - ৬টা', en:'3 PM - 6 PM'},
+    topCategory:{bn:'মধু ও ঘি', en:'Honey & Ghee'},
+    topCategoryPct: 65,
+    avgDeliveryDays: 2.3,
+    reliabilityScore: 82,
+    consent: 'given',
+    interestedIn:{bn:['পিংক সল্ট','চিয়া সিড'], en:['Pink Salt','Chia Seed']},
+    badges:[
+      {icon:'star', color:'gbVIP', label:{bn:'VIP Customer', en:'VIP Customer'}, filter:null},
+      {icon:'refresh-cw', color:'gbTrust', label:{bn:'Loyal', en:'Loyal'}, filter:null},
+      {icon:'alert-triangle', color:'gbRisk', label:{bn:'High Return Risk', en:'High Return Risk'}, filter:'at-risk'},
+    ],
+    due: 1200,
+    aiSummaryShort:{bn:'গ্রাহক অর্গানিক ঘি ও মধু পছন্দ করেন। নিয়মিত অর্ডারের ইতিহাস রয়েছে, তবে শেষ ৩টি অর্ডারের ১টি রিটার্ন করেছেন। সাম্প্রতিক কলের তথ্য অনুযায়ী প্যাকেজিং নিয়ে কিছুটা অসন্তোষ প্রকাশ করেছিলেন।',
+                    en:'Prefers organic ghee and honey. Regular order history, but 1 of the last 3 orders was returned. Recent call notes show some dissatisfaction about packaging.'},
+    notesCount: 14,
+    aiSummaryFull:{
+      bn:['১৫ জুলাই: প্যাকেজিং দেরিতে পৌঁছানোর অভিযোগ, পরবর্তী সপ্তাহে নতুন ঘি অর্ডারের আগ্রহ।',
+          '২ জুলাই: ড্যামেজড প্যাকেজিং এর কারণে ঘি রিটার্ন, রিফান্ড প্রসেস সম্পন্ন।',
+          '২০ জুন: মধুর মান নিয়ে প্রশংসা, নিয়মিত গ্রাহক হওয়ার আগ্রহ প্রকাশ।'],
+      en:['Jul 15: Complained about delayed packaging, interested in ordering new ghee next week.',
+          'Jul 2: Returned ghee due to damaged packaging, refund processed.',
+          'Jun 20: Praised honey quality, expressed interest in becoming a regular customer.']
+    },
+    metrics:{totalOrders:18, ltv:24500, aov:1361, cancelRate:5.5, returnRate:11.1, recencyDays:4, lastOrderDate:{bn:'১৬ই জুলাই, ২০২৪', en:'Jul 16, 2024'}},
+    callStats:{totalAttempts:22, reachRate:77, conversionRate:64, unreachableStreak:1},
+    callPatternSummary:{bn:'সাধারণত বিকালে কল ধরেন, দুপুরের দিকে বেশি Unreachable থাকে। ফলো-আপে ভালো সাড়া দেন।',
+                         en:'Usually picks up calls in the afternoon, often unreachable around midday. Responds well to follow-ups.'},
+    orders:[
+      { invoice:'GB-8921', status:'delivered', date:{bn:'১৬ই জুলাই, ২০২৪', en:'Jul 16, 2024'},
+        deliveryFee:70, paid:1520, due:0, courier:{bn:'Pathao Courier', en:'Pathao Courier'}, deliveryId:'PC-77281', method:{bn:'ক্যাশ অন ডেলিভারি', en:'Cash on Delivery'},
+        items:[
+          {img:'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=80&q=80', name:{bn:'প্রাকৃতিক সুন্দরবনের খলিসা ফুলের মধু (১ কেজি)', en:'Natural Sundarban Khalisha Flower Honey (1kg)'}, qty:1, unitPrice:1450},
+        ] },
+      { invoice:'GB-8410', status:'returned', date:{bn:'২রা জুলাই, ২০২৪', en:'Jul 2, 2024'},
+        deliveryFee:70, paid:0, due:0, courier:{bn:'SteadFast', en:'SteadFast'}, deliveryId:'SF-55210', method:{bn:'বিকাশ', en:'bKash'},
+        reason:{bn:'কারণ: ড্যামেজড প্যাকেজিং রিফান্ড', en:'Reason: Damaged packaging refund'},
+        items:[
+          {img:'https://images.unsplash.com/photo-1628088062854-d1870b4553da?auto=format&fit=crop&w=80&q=80', name:{bn:'প্রিমিয়াম গাওয়া ঘি (৫০০ গ্রাম)', en:'Premium Ghee (500g)'}, qty:1, unitPrice:950},
+        ] },
+      { invoice:'GB-8103', status:'cancelled', date:{bn:'১০ই জুন, ২০২৪', en:'Jun 10, 2024'},
+        deliveryFee:70, paid:0, due:0, courier:{bn:'Pathao Courier', en:'Pathao Courier'}, deliveryId:'PC-70142', method:{bn:'ক্যাশ অন ডেলিভারি', en:'Cash on Delivery'},
+        reason:{bn:'কারণ: গ্রাহক অর্ডার বাতিল করেছেন', en:'Reason: Customer cancelled the order'},
+        items:[
+          {img:'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=80&q=80', name:{bn:'কালো জিরার মধু (৫০০ গ্রাম)', en:'Black Seed Honey (500g)'}, qty:1, unitPrice:650},
+        ] },
+      { invoice:'GB-7890', status:'delivered', date:{bn:'২৮শে মে, ২০২৪', en:'May 28, 2024'},
+        deliveryFee:130, paid:2830, due:0, courier:{bn:'Pathao Courier', en:'Pathao Courier'}, deliveryId:'PC-61820', method:{bn:'ক্যাশ অন ডেলিভারি', en:'Cash on Delivery'},
+        items:[
+          {img:'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=80&q=80', name:{bn:'সুন্দরবনের মধু (৫০০ গ্রাম)', en:'Sundarban Honey (500g)'}, qty:1, unitPrice:1250},
+          {img:'https://images.unsplash.com/photo-1628088062854-d1870b4553da?auto=format&fit=crop&w=80&q=80', name:{bn:'গাওয়া ঘি (৫০০ গ্রাম)', en:'Ghee (500g)'}, qty:1, unitPrice:900},
+          {img:'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=80&q=80', name:{bn:'বিরিয়ানি মসলা (৪০ গ্রাম)', en:'Biryani Masala (40g)'}, qty:1, unitPrice:60},
+        ] },
+    ],
+    products:[
+      {img:'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=80&q=80', name:{bn:'সুন্দরবনের মধু', en:'Sundarban Honey'}, count:5, returned:0, top:true},
+      {img:'https://images.unsplash.com/photo-1628088062854-d1870b4553da?auto=format&fit=crop&w=80&q=80', name:{bn:'গাওয়া ঘি', en:'Ghee'}, count:3, returned:1, top:false},
+      {img:'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=80&q=80', name:{bn:'কালো জিরার মধু', en:'Black Seed Honey'}, count:2, returned:0, top:false},
+    ],
+    calls:[
+      {date:{bn:'১৫ই জুলাই, ২০২৪ - বিকাল ৪:৩০', en:'Jul 15, 2024 - 4:30 PM'}, type:{bn:'Follow-up Call', en:'Follow-up Call'}, status:'follow',
+       note:{bn:'গ্রাহক প্রোডাক্টের স্বাদ নিয়ে সন্তুষ্ট তবে আগের ডেলিভারিটি দেরিতে পৌঁছানোয় কথাটি মনে করিয়ে দিয়েছেন। আগামী সপ্তাহে নতুন ঘি অর্ডার করবেন।',
+            en:'Customer is satisfied with product taste but mentioned the previous delivery was late. Will order new ghee next week.'}, agent:{bn:'সাকলাইন', en:'Saklain'}},
+      {date:{bn:'২ জুলাই, ২০২৪ - সকাল ১১:১০', en:'Jul 2, 2024 - 11:10 AM'}, type:{bn:'Return Follow-up', en:'Return Follow-up'}, status:'negative',
+       note:{bn:'ড্যামেজড প্যাকেজিং নিয়ে অভিযোগ, রিফান্ড প্রসেস শুরু করা হয়েছে।', en:'Complained about damaged packaging, refund process initiated.'}, agent:{bn:'নাদিয়া', en:'Nadia'}},
+    ],
+    delivery:{courier:{bn:'Pathao Courier', en:'Pathao Courier'}, successRate:90},
+    channelBreakdown:[{label:{bn:'ফোন কল', en:'Phone Call'}, pct:70},{label:{bn:'ফেসবুক পেজ', en:'Facebook Page'}, pct:20},{label:{bn:'ওয়েবসাইট', en:'Website'}, pct:10}],
+    paymentBreakdown:[{label:{bn:'ক্যাশ অন ডেলিভারি', en:'Cash on Delivery'}, pct:60},{label:{bn:'বিকাশ', en:'bKash'}, pct:35},{label:{bn:'কার্ড', en:'Card'}, pct:5}],
+  },
+
+  '8801898765432': {
+    phone:'+880 1898-765432', name:'রেহানা বেগম', tier:'green',
+    addresses:[{bn:'৭২/এ, শান্তিনগর, ঢাকা', en:'72/A, Shantinagar, Dhaka', primary:true}],
+    segment:{bn:'Loyal', en:'Loyal'},
+    tenure:{bn:'২০২৩ থেকে', en:'Since 2023'},
+    preferredContactTime:{bn:'সকাল ১০টা - দুপুর ১টা', en:'10 AM - 1 PM'},
+    topCategory:{bn:'মসলা ও তেল', en:'Spices & Oil'},
+    topCategoryPct: 80,
+    avgDeliveryDays: 1.8,
+    reliabilityScore: 96,
+    consent: 'given',
+    interestedIn:{bn:[], en:[]},
+    badges:[
+      {icon:'refresh-cw', color:'gbTrust', label:{bn:'Loyal', en:'Loyal'}, filter:null},
+      {icon:'check-circle', color:'gbTrust', label:{bn:'On-time Payer', en:'On-time Payer'}, filter:null},
+    ],
+    due: 0,
+    aiSummaryShort:{bn:'নিয়মিত মাসিক অর্ডার দেন, কোনো বাতিল/রিটার্ন ইতিহাস নেই। সরিষার তেল ও মসলা জাতীয় পণ্য বেশি কেনেন।',
+                    en:'Places regular monthly orders, no cancellation/return history. Buys mostly mustard oil and spice products.'},
+    notesCount: 6,
+    aiSummaryFull:{
+      bn:['৩০ জুন: মাসিক অর্ডার নিশ্চিত করেছেন, ডেলিভারি সময়ের প্রশংসা করেছেন।',
+          '৫ জুন: নতুন মসলার প্যাকেজ সম্পর্কে জিজ্ঞাসা করেছিলেন।'],
+      en:['Jun 30: Confirmed monthly order, praised delivery speed.',
+          'Jun 5: Asked about a new spice package.']
+    },
+    metrics:{totalOrders:9, ltv:8200, aov:911, cancelRate:0, returnRate:0, recencyDays:12, lastOrderDate:{bn:'২৩শে জুন, ২০২৪', en:'Jun 23, 2024'}},
+    callStats:{totalAttempts:9, reachRate:100, conversionRate:89, unreachableStreak:0},
+    callPatternSummary:{bn:'সবসময় সকালে ফোন ধরেন, প্রতিটা কলেই ইতিবাচক সাড়া দিয়েছেন।',
+                         en:'Always picks up calls in the morning, has responded positively to every call.'},
+    orders:[
+      { invoice:'GB-7710', status:'delivered', date:{bn:'২৩শে জুন, ২০২৪', en:'Jun 23, 2024'},
+        deliveryFee:70, paid:590, due:0, courier:{bn:'Steadfast Courier', en:'Steadfast Courier'}, deliveryId:'SF-49021', method:{bn:'বিকাশ', en:'bKash'},
+        items:[
+          {img:'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=80&q=80', name:{bn:'খাঁটি সরিষার তেল (১ লিটার)', en:'Pure Mustard Oil (1L)'}, qty:1, unitPrice:520},
+        ] },
+    ],
+    products:[
+      {img:'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=80&q=80', name:{bn:'সরিষার তেল', en:'Mustard Oil'}, count:6, returned:0, top:true},
+    ],
+    calls:[
+      {date:{bn:'৩০ জুন, ২০২৪ - সকাল ১১:০০', en:'Jun 30, 2024 - 11:00 AM'}, type:{bn:'Order Confirmation', en:'Order Confirmation'}, status:'positive',
+       note:{bn:'মাসিক অর্ডার নিশ্চিত করা হয়েছে, ডেলিভারি সময় নিয়ে সন্তুষ্ট।', en:'Monthly order confirmed, satisfied with delivery time.'}, agent:{bn:'নাদিয়া', en:'Nadia'}},
+    ],
+    delivery:{courier:{bn:'Steadfast Courier', en:'Steadfast Courier'}, successRate:98},
+    channelBreakdown:[{label:{bn:'ফোন কল', en:'Phone Call'}, pct:90},{label:{bn:'ওয়েবসাইট', en:'Website'}, pct:10}],
+    paymentBreakdown:[{label:{bn:'বিকাশ', en:'bKash'}, pct:80},{label:{bn:'ক্যাশ অন ডেলিভারি', en:'Cash on Delivery'}, pct:20}],
+  },
+
+  '8801911223344': {
+    phone:'+880 1911-223344', name:'কামাল হোসেন', tier:'red',
+    addresses:[{bn:'১২, মিরপুর ১০, ঢাকা', en:'12, Mirpur 10, Dhaka', primary:true}],
+    segment:{bn:'At-Risk', en:'At-Risk'},
+    tenure:{bn:'২০২৪ থেকে', en:'Since 2024'},
+    preferredContactTime:{bn:'রাত ৮টা - ১০টা', en:'8 PM - 10 PM'},
+    topCategory:{bn:'স্ন্যাকস', en:'Snacks'},
+    topCategoryPct: 55,
+    avgDeliveryDays: 4.1,
+    reliabilityScore: 28,
+    consent: 'donotcall',
+    interestedIn:{bn:[], en:[]},
+    badges:[
+      {icon:'alert-triangle', color:'gbRisk', label:{bn:'High Cancel Risk', en:'High Cancel Risk'}, filter:'cancelled'},
+      {icon:'wallet', color:'gbRisk', label:{bn:'Due Payment', en:'Due Payment'}, filter:null},
+    ],
+    due: 850,
+    aiSummaryShort:{bn:'শেষ ৪টি অর্ডারের ২টি বাতিল হয়েছে, ফোন বেশিরভাগ সময় Unreachable থাকে। ডেলিভারি সময়েও দেরি হয়েছে একাধিকবার।',
+                    en:'2 of the last 4 orders were cancelled, phone is often unreachable. Delivery has also been delayed multiple times.'},
+    notesCount: 8,
+    aiSummaryFull:{
+      bn:['১৮ জুলাই: ফোন Unreachable, তৃতীয়বার চেষ্টা করা হয়েছে।',
+          '৫ জুলাই: গ্রাহক ডেলিভারি দেরির অভিযোগ করে অর্ডার বাতিল করেছেন।'],
+      en:['Jul 18: Phone unreachable, tried a third time.',
+          'Jul 5: Customer cancelled the order citing delivery delay.']
+    },
+    metrics:{totalOrders:4, ltv:2100, aov:525, cancelRate:50, returnRate:0, recencyDays:20, lastOrderDate:{bn:'১৮ই জুলাই, ২০২৪', en:'Jul 18, 2024'}},
+    callStats:{totalAttempts:11, reachRate:36, conversionRate:18, unreachableStreak:5},
+    callPatternSummary:{bn:'রাতে ফোন ধরার সম্ভাবনা বেশি, কিন্তু পরপর ৫ বার Unreachable এসেছে — escalation বিবেচনা করা উচিত।',
+                         en:'More likely to answer at night, but has been unreachable 5 times in a row — escalation should be considered.'},
+    orders:[
+      { invoice:'GB-9012', status:'cancelled', date:{bn:'১৮ই জুলাই, ২০২৪', en:'Jul 18, 2024'},
+        deliveryFee:70, paid:0, due:0, courier:{bn:'RedX', en:'RedX'}, deliveryId:'RX-31029', method:{bn:'ক্যাশ অন ডেলিভারি', en:'Cash on Delivery'},
+        reason:{bn:'কারণ: ডেলিভারি দেরির কারণে বাতিল', en:'Reason: Cancelled due to delivery delay'},
+        items:[
+          {img:'https://images.unsplash.com/photo-1599490659213-e2b9527bd087?auto=format&fit=crop&w=80&q=80', name:{bn:'ঝাল মুড়ি মিক্স (৪০০ গ্রাম)', en:'Spicy Muri Mix (400g)'}, qty:1, unitPrice:380},
+        ] },
+      { invoice:'GB-8890', status:'cancelled', date:{bn:'২৮ জুন, ২০২৪', en:'Jun 28, 2024'},
+        deliveryFee:70, paid:0, due:0, courier:{bn:'RedX', en:'RedX'}, deliveryId:'RX-29981', method:{bn:'ক্যাশ অন ডেলিভারি', en:'Cash on Delivery'},
+        reason:{bn:'কারণ: ফোন রিসিভ হয়নি', en:'Reason: Phone not received'},
+        items:[
+          {img:'https://images.unsplash.com/photo-1599490659213-e2b9527bd087?auto=format&fit=crop&w=80&q=80', name:{bn:'চানাচুর মিক্স (৩০০ গ্রাম)', en:'Chanachur Mix (300g)'}, qty:1, unitPrice:220},
+        ] },
+    ],
+    products:[
+      {img:'https://images.unsplash.com/photo-1599490659213-e2b9527bd087?auto=format&fit=crop&w=80&q=80', name:{bn:'স্ন্যাকস মিক্স', en:'Snacks Mix'}, count:2, returned:0, top:true},
+    ],
+    calls:[
+      {date:{bn:'১৮ জুলাই, ২০২৪ - রাত ৮:১৫', en:'Jul 18, 2024 - 8:15 PM'}, type:{bn:'Unreachable', en:'Unreachable'}, status:'negative',
+       note:{bn:'তিনবার চেষ্টা করেও ফোন ধরেননি।', en:'Did not answer after three attempts.'}, agent:{bn:'রাকিব', en:'Rakib'}},
+    ],
+    delivery:{courier:{bn:'RedX', en:'RedX'}, successRate:62},
+    channelBreakdown:[{label:{bn:'ফেসবুক পেজ', en:'Facebook Page'}, pct:100}],
+    paymentBreakdown:[{label:{bn:'ক্যাশ অন ডেলিভারি', en:'Cash on Delivery'}, pct:100}],
+  },
+};
+
+/* ============ Live cache, populated from GET /api/customer/{phone} ============ */
+const CUSTOMERS = {};
+
+const TIER_CLASS = {gold:'tier-gold-edge', green:'tier-green-edge', red:'tier-red-edge'};
+// `border` is a single left-side color utility (border-l-{color}), paired
+// on the card with neutral top/right/bottom borders and a thicker
+// border-l-4 — status color shows only as that left accent + the badge
+// (`cls`), deliberately not a full tinted background, to keep the order
+// list subtle. (Deliberately not combined with a plain `border-slate-200`,
+// which sets border-color on all 4 sides and would race the left-side
+// override for which color wins.)
+const STATUS_STYLE = {
+  delivered:{cls:'bg-emerald-600 text-white shadow-sm', key:'statusDelivered', border:'border-l-emerald-600'},
+  cancelled:{cls:'bg-red-600 text-white shadow-sm', key:'statusCancelled', border:'border-l-red-600'},
+  returned:{cls:'bg-purple-600 text-white shadow-sm', key:'statusReturned', border:'border-l-purple-600'},
+  intransit:{cls:'bg-amber-500 text-white shadow-sm', key:'statusInTransit', border:'border-l-amber-500'},
+};
+// Source data has ~29 raw status spellings (case/underscore/hyphen variants
+// plus lifecycle states like PENDING/PROCESSING/APPROVED the backend
+// doesn't bucket into the 4 known ones above) — any of those must render
+// as a plain "other" chip instead of throwing, or renderOrders() aborts
+// mid-list and every render call after it (products/calls/delivery/
+// channel) silently never runs. Styled the same amber/"in progress" as
+// intransit, since an unrecognized lifecycle status is presumably some
+// pre-delivery state, not a final delivered/cancelled/returned one.
+const STATUS_STYLE_OTHER = {cls:'bg-amber-500 text-white shadow-sm', key:null, border:'border-l-amber-500'};
+
+let activeOrderFilter = null;
+let heatmapMeta = { order: [], call: [] };
+let expandedOrderInvoice = null;
+let ordersShowAll = false;
+let productsShowAll = false;
+
+/* ============ Rendering helpers ============ */
+function fmtMoney(n){ return '৳ ' + n.toLocaleString('en-US'); }
+
+function applyStaticLabels(){
+  const L = LABELS[currentLang];
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const k = el.getAttribute('data-i18n');
+    if (L[k]) el.textContent = L[k];
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>{
+    const k = el.getAttribute('data-i18n-placeholder');
+    if (L[k]) el.setAttribute('placeholder', L[k]);
+  });
+  document.getElementById('search-input').placeholder = currentLang==='bn' ? 'ফোন নম্বর দিয়ে খুঁজুন... (Ctrl+K)' : 'Search by phone number... (Ctrl+K)';
+}
+
+function metricChip(label, value, colorHex){
+  return `<div class="metric-strip-item bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+    <p class="text-[10px] text-slate-400 font-semibold">${label}</p>
+    <p class="text-sm font-bold" style="color:${colorHex || '#1e293b'}">${value}</p>
+  </div>`;
+}
+
+function renderCustomer(){
+  const c = CUSTOMERS[currentCustomerKey];
+  const L = currentLang;
+  const Lb = LABELS[L];
+
+  document.getElementById('snapshot-card').className = 'bg-white rounded-xl shadow-sm p-6 relative ' + TIER_CLASS[c.tier];
+  document.getElementById('cust-name').textContent = c.name;
+  document.getElementById('cust-phone').textContent = c.phone;
+  const primary = c.addresses.find(a=>a.primary) || c.addresses[0];
+  document.getElementById('cust-address').textContent = primary[L];
+  document.getElementById('cust-address-extra').textContent = c.addresses.length > 1 ? `+${c.addresses.length - 1}${Lb.addressesLabel}` : '';
+  document.getElementById('cust-segment').textContent = c.segment[L];
+  document.getElementById('cust-segment').className = 'text-[10px] font-bold px-2 py-0.5 rounded-full text-white ' +
+    (c.tier==='gold' ? 'bg-gbVIP' : c.tier==='green' ? 'bg-gbTrust' : 'bg-gbRisk');
+  document.getElementById('cust-tenure').textContent = c.tenure[L];
+  document.getElementById('cust-contact-time').textContent = c.preferredContactTime[L];
+  document.getElementById('cust-top-category').textContent = c.topCategory[L];
+
+  document.getElementById('due-chip').style.display = c.due > 0 ? 'flex' : 'none';
+  document.getElementById('due-amount').textContent = fmtMoney(c.due);
+
+  // Reliability gauge
+  const score = c.reliabilityScore;
+  const color = score >= 70 ? '#639922' : score >= 40 ? '#EF9F27' : '#E24B4A';
+  const circumference = 2 * Math.PI * 18;
+  const ring = document.getElementById('reliability-ring');
+  ring.setAttribute('stroke', color);
+  ring.setAttribute('stroke-dasharray', circumference);
+  ring.setAttribute('stroke-dashoffset', circumference - (score/100)*circumference);
+  const scoreEl = document.getElementById('reliability-score');
+  scoreEl.textContent = score + '/100';
+  scoreEl.style.color = color;
+
+  // Badges (base + consent + escalation)
+  const badgeRow = document.getElementById('badge-row');
+  let badgesHtml = c.badges.map(b => `
+    <span onclick="${b.filter ? `switchTab('orders','${b.filter}')` : `switchTab('orders')`}"
+      class="cursor-pointer bg-${b.color}/10 text-${b.color} border border-${b.color}/30 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 hover:bg-${b.color}/20">
+      <i data-lucide="${b.icon}" class="w-3.5 h-3.5"></i> ${b.label[L]}
+    </span>`).join('');
+  if (c.consent === 'given') {
+    badgesHtml += `<span class="bg-gbTrust/10 text-gbTrust border border-gbTrust/30 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1"><i data-lucide="shield-check" class="w-3.5 h-3.5"></i> ${Lb.consentGiven}</span>`;
+  } else if (c.consent === 'donotcall') {
+    badgesHtml += `<span class="bg-gbRisk/10 text-gbRisk border border-gbRisk/30 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1"><i data-lucide="shield-off" class="w-3.5 h-3.5"></i> ${Lb.doNotCall}</span>`;
+  }
+  if (c.callStats.unreachableStreak >= 4) {
+    badgesHtml += `<span onclick="switchTab('calls')" class="cursor-pointer bg-gbRisk/10 text-gbRisk border border-gbRisk/30 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 animate-pulse"><i data-lucide="flag" class="w-3.5 h-3.5"></i> ${Lb.escalationNeeded}</span>`;
+  }
+  badgeRow.innerHTML = badgesHtml;
+
+  // Interested-in cross-sell tags
+  const interestRow = document.getElementById('interest-row');
+  if (c.interestedIn[L].length) {
+    interestRow.innerHTML = `<span class="text-[10px] text-slate-400 font-semibold">${Lb.interestedInLabel}</span>` +
+      c.interestedIn[L].map(t => `<span class="text-[10px] bg-gbProducts/10 text-gbProducts border border-gbProducts/20 px-2 py-0.5 rounded-full flex items-center gap-1"><i data-lucide="tag" class="w-3 h-3"></i>${t}</span>`).join('');
+  } else {
+    interestRow.innerHTML = '';
+  }
+
+  // AI summary
+  const aiToggleBtn = document.getElementById('ai-summary-toggle-label').closest('button');
+  if (!c.hasAiSummary) {
+    // No background-job row for this customer yet — a real, expected
+    // state (not a fetch/connection failure), so show a neutral notice
+    // instead of an empty '""' or any error-styled message.
+    document.getElementById('ai-summary-short').textContent =
+      currentLang==='bn' ? 'এখনো AI সারাংশ তৈরি হয়নি।' : 'AI summary not generated yet.';
+    document.getElementById('ai-summary-full').classList.add('hidden');
+    document.getElementById('ai-summary-full').innerHTML = '';
+    if (aiToggleBtn) aiToggleBtn.classList.add('hidden');
+  } else {
+    if (aiToggleBtn) aiToggleBtn.classList.remove('hidden');
+    document.getElementById('ai-summary-short').textContent = '"' + c.aiSummaryShort[L] + '"';
+    document.getElementById('ai-summary-full').classList.add('hidden');
+    document.getElementById('ai-summary-chevron').classList.remove('chevron-rot');
+    document.getElementById('ai-summary-toggle-label').textContent =
+      (currentLang==='bn' ? `${Lb.aiDetailsShow} (${c.notesCount}টি নোট থেকে প্রাপ্ত)` : `${Lb.aiDetailsShow} (from ${c.notesCount} notes)`);
+    document.getElementById('ai-summary-full').innerHTML = c.aiSummaryFull[L].map(note => `
+      <p class="text-xs text-slate-600 bg-white/70 border border-purple-100 rounded-lg p-2">${note}</p>`).join('');
+  }
+
+  // Metrics
+  document.getElementById('m-total-orders').textContent = c.metrics.totalOrders + (L==='bn' ? 'টি' : '');
+  document.getElementById('m-ltv').textContent = fmtMoney(c.metrics.ltv);
+  document.getElementById('m-aov').textContent = fmtMoney(c.metrics.aov);
+  document.getElementById('m-cancel-rate').textContent = c.metrics.cancelRate + '%';
+  document.getElementById('m-return-rate').textContent = c.metrics.returnRate + '%';
+  document.getElementById('m-recency').textContent = c.metrics.recencyDays + (L==='bn' ? ' দিন' : ' days');
+  document.getElementById('m-last-order-date').textContent = c.metrics.lastOrderDate[L];
+
+  expandedOrderInvoice = c.orders.length ? c.orders[0].invoice : null;
+
+  renderOrders(c, L);
+  renderProducts(c, L);
+  renderCalls(c, L);
+  renderDelivery(c, L);
+  renderChannel(c, L);
+  buildHeatmap('order-heatmap', 'order', c);
+  buildHeatmap('call-heatmap', 'call', c);
+  renderMonthLabels();
+
+  lucide.createIcons();
+}
+
+/* ============ Orders (summary cards, compact list, expand-to-detail) ============ */
+function computeOrderStats(c){
+  const delivered = c.orders.filter(o=>o.status==='delivered').length;
+  const cancelled = c.orders.filter(o=>o.status==='cancelled').length;
+  const returned = c.orders.filter(o=>o.status==='returned').length;
+  const topMethod = c.paymentBreakdown[0] || { label: bnEn(''), pct: 0 };
+  return { invoiceCount: c.orders.length, delivered, cancelled, returned, topMethod };
+}
+
+function orderTotal(o){ return o.items.reduce((s,i)=>s+i.qty*i.unitPrice,0) + o.deliveryFee; }
+
+// Total sales / unique products / total quantity across this customer's
+// FULL order list (not just the 5 shown before "আরও দেখুন") — the
+// summary card at the top of the tab always reflects everything, not
+// just what's currently on screen.
+function computeOrdersSummary(orders){
+  let totalSales = 0;
+  let totalQty = 0;
+  const productKeys = new Set();
+  orders.forEach(o => {
+    totalSales += orderTotal(o);
+    o.items.forEach(it => {
+      totalQty += it.qty;
+      // ProductSKU is NULL on some real TestMaster rows, so fall back to
+      // the product name so those items still count as a distinct product.
+      productKeys.add(it.sku || `name:${it.name.bn}|${it.name.en}`);
+    });
+  });
+  return { totalSales, totalQty, uniqueProducts: productKeys.size };
+}
+
+function orderSummaryCard(icon, label, value, colorHex){
+  return `
+  <div class="flex items-center gap-3 bg-white border border-slate-200 rounded-xl shadow-sm p-4">
+    <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style="background:${colorHex}1A">
+      <i data-lucide="${icon}" class="w-5 h-5" style="color:${colorHex}"></i>
+    </div>
+    <div>
+      <p class="text-[11px] text-slate-500 font-semibold">${label}</p>
+      <p class="text-lg font-bold text-slate-800">${value}</p>
+    </div>
+  </div>`;
+}
+
+function toggleOrder(invoice){
+  expandedOrderInvoice = (expandedOrderInvoice === invoice) ? null : invoice;
+  renderOrders(CUSTOMERS[currentCustomerKey], currentLang);
+  lucide.createIcons();
+}
+
+const LIST_PREVIEW_LIMIT = 5;
+
+function toggleOrdersShowAll(){
+  ordersShowAll = !ordersShowAll;
+  renderOrders(CUSTOMERS[currentCustomerKey], currentLang);
+  lucide.createIcons();
+}
+
+function renderOrders(c, L){
+  const Lb = LABELS[L];
+  const stats = computeOrderStats(c);
+
+  // STEP 1: summary cards — always over the customer's full order list,
+  // independent of any filter/expand state below.
+  const summary = computeOrdersSummary(c.orders);
+  document.getElementById('orders-summary-cards').innerHTML =
+    orderSummaryCard('wallet', Lb.totalAmountLabel, fmtMoney(summary.totalSales), '#378ADD') +
+    orderSummaryCard('tags', Lb.uniqueProductsLabel, summary.uniqueProducts, '#D85A30') +
+    orderSummaryCard('package', Lb.totalQtyLabel, summary.totalQty, '#7F77DD');
+
+  // Dashboard summary cards/badges outside this tab still navigate here
+  // via switchTab('orders', 'cancelled'|'returned'|'at-risk') — that
+  // filter state is preserved and shown as a dismissible banner, even
+  // though there's no in-tab filter control anymore.
+  const chip = document.getElementById('orders-filter-chip');
+  const chipLabel = document.getElementById('orders-filter-label');
+  let filtered = c.orders;
+  if (activeOrderFilter === 'at-risk') {
+    filtered = c.orders.filter(o=>o.status==='cancelled'||o.status==='returned');
+    chipLabel.textContent = Lb.filterAtRisk;
+    chip.classList.remove('hidden'); chip.classList.add('flex');
+  } else {
+    if (activeOrderFilter) filtered = c.orders.filter(o=>o.status===activeOrderFilter);
+    chip.classList.add('hidden'); chip.classList.remove('flex');
+  }
+
+  // STEP 2 + 3: compact invoice list, last 5 by default, click-to-expand.
+  const list = document.getElementById('orders-list');
+  const empty = document.getElementById('orders-empty');
+  const showMoreBtn = document.getElementById('orders-show-more-btn');
+  if (filtered.length === 0){
+    list.innerHTML='';
+    empty.classList.remove('hidden');
+    showMoreBtn.classList.add('hidden');
+  }
+  else {
+    empty.classList.add('hidden');
+    const displayed = ordersShowAll ? filtered : filtered.slice(0, LIST_PREVIEW_LIMIT);
+    list.innerHTML = displayed.map(o => {
+      const st = STATUS_STYLE[o.status] || STATUS_STYLE_OTHER;
+      const statusLabel = st.key ? Lb[st.key] : (o.status || (L==='bn' ? 'অজানা' : 'Unknown'));
+      const isOpen = expandedOrderInvoice === o.invoice;
+      const total = orderTotal(o);
+      const showReason = (o.status === 'cancelled' || o.status === 'returned') && o.reason;
+      const statusBadge = `<span class="${st.cls} px-2.5 py-1 rounded-full text-xs font-semibold shrink-0">${statusLabel}</span>`;
+
+      return `
+      <div class="rounded-lg overflow-hidden border-t border-r border-b border-t-slate-200 border-r-slate-200 border-b-slate-200 border-l-4 ${st.border}">
+        <button onclick="toggleOrder('${o.invoice}')" class="w-full p-3 flex items-center justify-between gap-3 hover:bg-slate-50 transition text-left">
+          <span class="flex items-center gap-2 min-w-0">
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 shrink-0 transition-transform ${isOpen ? 'chevron-rot' : ''}"></i>
+            <span class="min-w-0">
+              <span class="block font-bold text-sm text-slate-800">${Lb.invoiceLabel} #${o.invoice}</span>
+              <span class="block text-xs text-slate-400">${o.date[L]}</span>
+            </span>
+          </span>
+          <span class="flex items-center gap-3 shrink-0">
+            <span class="font-bold text-sm text-slate-800">${fmtMoney(total)}</span>
+            ${statusBadge}
+          </span>
+        </button>
+
+        ${isOpen ? `
+        <div class="border-t border-slate-100 p-4 space-y-4 fade-in">
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+            <div class="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2"><p class="text-slate-400">${Lb.orderDateFieldLabel}</p><p class="font-semibold text-slate-700 mt-0.5">${o.date[L]}</p></div>
+            <div class="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2"><p class="text-slate-400">${Lb.orderStatusFieldLabel}</p><p class="mt-0.5">${statusBadge}</p></div>
+            <div class="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2"><p class="text-slate-400">${Lb.paymentMethodFieldLabel}</p><p class="font-semibold text-slate-700 mt-0.5">${o.method[L] || '—'}</p></div>
+            <div class="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2"><p class="text-slate-400">${Lb.totalAmountLabel}</p><p class="font-semibold text-slate-700 mt-0.5">${fmtMoney(total)}</p></div>
+            ${o.discount > 0 ? `<div class="bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-2"><p class="text-slate-400">${Lb.discountLabel}</p><p class="font-semibold text-emerald-600 mt-0.5">-${fmtMoney(o.discount)}</p></div>` : ''}
+            <div class="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2"><p class="text-slate-400">${Lb.deliveryFeeLabel}</p><p class="font-semibold text-slate-700 mt-0.5">${fmtMoney(o.deliveryFee)}</p></div>
+            <div class="bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-2"><p class="text-slate-400">${Lb.paidLabel}</p><p class="font-semibold text-emerald-600 mt-0.5">${fmtMoney(o.paid)}</p></div>
+            <div class="${o.due > 0 ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'} border rounded-lg px-2.5 py-2"><p class="text-slate-400">${Lb.dueLabelShort}</p><p class="font-semibold mt-0.5 ${o.due > 0 ? 'text-gbRisk' : 'text-slate-700'}">${fmtMoney(o.due)}</p></div>
+          </div>
+          ${showReason ? `<p class="text-[11px] text-gbRisk flex items-start gap-1"><i data-lucide="alert-circle" class="w-3 h-3 shrink-0 mt-0.5"></i>${Lb.reasonPrefix}: ${o.reason[L]}</p>` : ''}
+
+          <div class="overflow-x-auto -mx-1">
+            <table class="w-full text-xs border-collapse">
+              <thead>
+                <tr class="text-left text-slate-400 border-b border-slate-200">
+                  <th class="py-1.5 px-1 font-semibold">${Lb.productNameColLabel}</th>
+                  <th class="py-1.5 px-1 font-semibold">SKU</th>
+                  <th class="py-1.5 px-1 font-semibold text-right">${Lb.qtyLabel}</th>
+                  <th class="py-1.5 px-1 font-semibold text-right">${Lb.unitPriceLabel}</th>
+                  <th class="py-1.5 px-1 font-semibold text-right">${Lb.lineTotalLabel}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${o.items.map(it => `
+                <tr class="border-b border-slate-100 last:border-0">
+                  <td class="py-1.5 px-1 text-slate-700">${it.name[L]}</td>
+                  <td class="py-1.5 px-1 text-slate-400">${it.sku || '—'}</td>
+                  <td class="py-1.5 px-1 text-right text-slate-700">${it.qty}</td>
+                  <td class="py-1.5 px-1 text-right text-slate-700">${fmtMoney(it.unitPrice)}</td>
+                  <td class="py-1.5 px-1 text-right font-semibold text-slate-800">${fmtMoney(it.qty*it.unitPrice)}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>` : ''}
+      </div>`;
+    }).join('');
+
+    if (filtered.length > LIST_PREVIEW_LIMIT) {
+      showMoreBtn.classList.remove('hidden');
+      showMoreBtn.textContent = ordersShowAll
+        ? Lb.showLess
+        : Lb.showMore.replace('{total}', filtered.length);
+    } else {
+      showMoreBtn.classList.add('hidden');
+    }
+  }
+
+  const summaryLine = L==='bn'
+    ? `গত কয়েক মাসে ${stats.invoiceCount}টি ইনভয়েস, ${Math.round(stats.delivered/stats.invoiceCount*100)}% ডেলিভার্ড, গড় ডেলিভারি সময় ${c.avgDeliveryDays} দিন, প্রধান পেমেন্ট মেথড ${stats.topMethod.label.bn} (${stats.topMethod.pct}%)।`
+    : `${stats.invoiceCount} invoices recently, ${Math.round(stats.delivered/stats.invoiceCount*100)}% delivered, avg delivery ${c.avgDeliveryDays} days, top payment method is ${stats.topMethod.label.en} (${stats.topMethod.pct}%).`;
+  document.getElementById('orders-summary-line').innerHTML = `<i data-lucide="calculator" class="w-3.5 h-3.5 text-gbIdentity shrink-0 mt-0.5"></i><span><b class="text-[10px] uppercase text-gbIdentity mr-1">${Lb.computedTag}</b>${summaryLine}</span>`;
+}
+
+/* ============ Products (with return rate, metric strip, summary) ============ */
+function computeProductStats(c){
+  const uniqueProducts = c.products.length;
+  const avgBasket = (c.orders.reduce((s,o)=>s+o.items.reduce((a,i)=>a+i.qty,0),0) / c.orders.length).toFixed(1);
+  const highestOrder = Math.max(...c.orders.map(orderTotal));
+  return { uniqueProducts, avgBasket, highestOrder };
+}
+
+function toggleProductsShowAll(){
+  productsShowAll = !productsShowAll;
+  renderProducts(CUSTOMERS[currentCustomerKey], currentLang);
+  lucide.createIcons();
+}
+
+function renderProducts(c, L){
+  const Lb = LABELS[L];
+  const stats = computeProductStats(c);
+  document.getElementById('products-metric-strip').innerHTML =
+    metricChip(Lb.uniqueProductsLabel, stats.uniqueProducts, '#D85A30') +
+    metricChip(Lb.topCategoryPctLabel, c.topCategory[L] + ' ' + c.topCategoryPct + '%', '#D85A30') +
+    metricChip(Lb.avgBasketLabel, stats.avgBasket, '#D85A30') +
+    metricChip(Lb.highestOrderLabel, fmtMoney(stats.highestOrder), '#D85A30');
+
+  const displayedProducts = productsShowAll ? c.products : c.products.slice(0, LIST_PREVIEW_LIMIT);
+  document.getElementById('products-list').innerHTML = displayedProducts.map(p => {
+    const returnRate = p.returned > 0 ? Math.round(p.returned / p.count * 100) : 0;
+    return `
+    <div class="border border-slate-200 p-4 rounded-lg flex items-center gap-3">
+      <img src="${p.img}" class="w-16 h-16 rounded object-cover border">
+      <div>
+        <p class="font-bold text-sm">${p.name[L]}</p>
+        <p class="text-xs text-slate-500">${p.count} ${Lb.boughtCountLabel}</p>
+        ${p.returned > 0
+          ? `<p class="text-[10px] text-gbRisk mt-1 font-semibold flex items-center gap-1"><i data-lucide="alert-triangle" class="w-3 h-3"></i>${p.returned} ${Lb.returnedCountLabel} (${returnRate}%)</p>`
+          : (p.top ? `<p class="text-[10px] text-gbTrust mt-1 font-semibold">${L==='bn'?'পছন্দের প্রোডাক্ট #১':'Top Preference #1'}</p>` : '')}
+      </div>
+    </div>`;
+  }).join('');
+
+  const productsShowMoreBtn = document.getElementById('products-show-more-btn');
+  if (c.products.length > LIST_PREVIEW_LIMIT) {
+    productsShowMoreBtn.classList.remove('hidden');
+    productsShowMoreBtn.textContent = productsShowAll
+      ? Lb.showLess
+      : Lb.showMore.replace('{total}', c.products.length);
+  } else {
+    productsShowMoreBtn.classList.add('hidden');
+  }
+
+  const worst = c.products.slice().sort((a,b)=>(b.returned/b.count)-(a.returned/a.count))[0];
+  const worstRate = worst && worst.count ? Math.round(worst.returned/worst.count*100) : 0;
+  const summary = L==='bn'
+    ? `সর্বাধিক পছন্দ ${c.products[0].name.bn} (${c.products[0].count} বার)।` + (worstRate > 0 ? ` ${worst.name.bn} সবচেয়ে বেশি রিটার্ন হয়েছে (${worstRate}%) — এটা আবার সাজেস্ট করার আগে সতর্ক থাকুন।` : ' কোনো প্রোডাক্টে উল্লেখযোগ্য রিটার্ন নেই।')
+    : `Most preferred: ${c.products[0].name.en} (${c.products[0].count}x).` + (worstRate > 0 ? ` ${worst.name.en} has the highest return rate (${worstRate}%) — be cautious suggesting it again.` : ' No product has a notable return rate.');
+  document.getElementById('products-summary-line').innerHTML = `<i data-lucide="calculator" class="w-3.5 h-3.5 shrink-0 mt-0.5" style="color:#D85A30"></i><span><b class="text-[10px] uppercase mr-1" style="color:#D85A30">${Lb.computedTag}</b>${summary}</span>`;
+}
+
+/* ============ Calls (metric strip, timeline, cached-AI pattern summary) ============ */
+const CALL_STATUS_DOT = { positive:'bg-gbTrust', follow:'bg-gbVIP', negative:'bg-gbRisk' };
+
+// Thresholds are a simple, adjustable if/else read of call_status_breakdown
+// (already fetched — no AI call needed). Not a business-confirmed cutoff,
+// just a reasonable "is this the dominant outcome" bar; tune freely.
+// Scoped narrowly to this one pattern check — deliberately not reusing
+// NEGATIVE_CALL_STATUSES/POSITIVE_CALL_STATUSES (defined further below,
+// used for the per-entry status dot color) since those also lump in
+// "Not Interested"/"Interested", which this function treats as its own
+// distinct pattern rather than folding into "unreachable"/"orders".
+const CALL_PATTERN_THRESHOLD_PCT = 30;
+const CALL_PATTERN_UNREACHABLE_STATUSES = ['Unreachable', 'Switch Off'];
+const CALL_PATTERN_ORDER_STATUSES = ['Order Placed', 'Recently Ordered'];
+
+function computeCallPatternSummary(breakdown, L){
+  const Lb = LABELS[L];
+  const fmt = (key, vars) => Object.keys(vars || {}).reduce(
+    (s, k) => s.replace(`{${k}}`, vars[k]), Lb[key]);
+  if (!breakdown || !breakdown.length) return fmt('patternNoData');
+
+  const top = breakdown[0]; // backend already sorts by count DESC
+  if (CALL_PATTERN_UNREACHABLE_STATUSES.includes(top.status) && top.pct >= CALL_PATTERN_THRESHOLD_PCT) {
+    return fmt('patternMostlyUnreachable');
+  }
+  if (CALL_PATTERN_ORDER_STATUSES.includes(top.status) && top.pct >= CALL_PATTERN_THRESHOLD_PCT) {
+    return fmt('patternRegularOrders');
+  }
+  if (top.status === 'Not Interested' && top.pct >= CALL_PATTERN_THRESHOLD_PCT) {
+    return fmt('patternNotInterested');
+  }
+  return fmt('patternMixed', { status: top.status, pct: top.pct });
+}
+
+function renderCalls(c, L){
+  const Lb = LABELS[L];
+  const s = c.callStats;
+  document.getElementById('calls-metric-strip').innerHTML =
+    metricChip(Lb.totalAttemptsLabel, s.totalAttempts, '#7F77DD') +
+    metricChip(Lb.reachRateLabel, s.reachRate + '%', '#7F77DD') +
+    metricChip(Lb.conversionLabel, s.conversionRate + '%', '#7F77DD') +
+    metricChip(Lb.streakLabel, s.unreachableStreak, s.unreachableStreak >= 4 ? '#E24B4A' : '#7F77DD');
+
+  // Status breakdown bar chart — full call history (all statuses this
+  // customer's calls have ever landed on), independent of the last-5 list.
+  document.getElementById('calls-status-chart').innerHTML = `
+    <p class="font-bold text-sm text-slate-700 mb-3 flex items-center gap-2"><i data-lucide="bar-chart-3" class="w-4 h-4 text-gbCall"></i> ${Lb.callStatusChartTitle}</p>
+    ${(c.callStatusBreakdown || []).map(item => `
+      <div class="mb-2">
+        <div class="flex justify-between text-xs text-slate-600 mb-1">
+          <span>${item.status}</span>
+          <span class="font-semibold">${item.count}${L==='bn'?'টি':''} (${item.pct}%)</span>
+        </div>
+        <div class="w-full bg-slate-100 rounded-full h-2"><div class="bg-gbCall h-2 rounded-full" style="width:${item.pct}%"></div></div>
+      </div>`).join('') || `<p class="text-xs text-slate-400">${Lb.patternNoData}</p>`}`;
+
+  document.getElementById('calls-status-summary-line').innerHTML =
+    `<i data-lucide="calculator" class="w-3.5 h-3.5 text-gbCall shrink-0 mt-0.5"></i><span><b class="text-[10px] uppercase text-gbCall mr-1">${Lb.computedTag}</b>${computeCallPatternSummary(c.callStatusBreakdown, L)}</span>`;
+
+  // Two independent sections, each capped at 5, so status history and
+  // meaningful remarks don't compete for the same 5 slots — a call with
+  // no remark still counts toward the status list, and a remark from an
+  // older call still makes the remarks list even if it isn't in the
+  // latest 5 calls overall.
+  const LATEST_LIMIT = 5;
+
+  const meaningfulRemark = call => {
+    // A remark of just punctuation/whitespace (e.g. "-", ".") carries no
+    // information, so it's treated the same as no remark at all. The
+    // backend already nulls out the generic auto-remark text, but this
+    // still guards against other placeholder-only values.
+    const remark = (call.note || '').trim();
+    return /[\p{L}\p{N}]/u.test(remark) ? remark : null;
+  };
+
+  const latestStatuses = c.calls.slice(0, LATEST_LIMIT);
+  document.getElementById('calls-status-list').innerHTML = latestStatuses.map(call => {
+    const dateText = formatCallDate(call.dateRaw, L);
+    const agentName = call.agentName || Lb.unknownAgent;
+    const newStatusText = translateStatus(call.newStatusRaw, L);
+    const sentence = Lb.callSentence
+      .replace('{date}', dateText).replace('{agent}', agentName).replace('{status}', newStatusText);
+    return `
+    <div class="border-l-2 border-gbCall pl-4 py-1 flex gap-2">
+      <span class="w-2 h-2 rounded-full mt-1.5 shrink-0 ${CALL_STATUS_DOT[call.status] || 'bg-slate-300'}"></span>
+      <p class="text-sm text-slate-700">${sentence}</p>
+    </div>`;
+  }).join('') || `<p class="text-xs text-slate-400">${Lb.patternNoData}</p>`;
+
+  document.getElementById('calls-status-list-note').textContent = c.calls.length > LATEST_LIMIT
+    ? Lb.showingLatestStatuses.replace('{n}', LATEST_LIMIT).replace('{total}', c.calls.length)
+    : '';
+
+  const remarkCalls = c.calls
+    .map(call => ({ call, remark: meaningfulRemark(call) }))
+    .filter(x => x.remark !== null);
+  const latestRemarks = remarkCalls.slice(0, LATEST_LIMIT);
+  document.getElementById('calls-remarks-list').innerHTML = latestRemarks.map(({ call, remark }) => {
+    const dateText = formatCallDate(call.dateRaw, L);
+    const agentName = call.agentName || Lb.unknownAgent;
+    return `
+    <p class="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg border">
+      ${Lb.callRemarkLine.replace('{date}', dateText).replace('{remark}', remark).replace('{agent}', agentName)}
+    </p>`;
+  }).join('');
+  document.getElementById('calls-remarks-empty').classList.toggle('hidden', latestRemarks.length > 0);
+
+  document.getElementById('calls-remarks-list-note').textContent = remarkCalls.length > LATEST_LIMIT
+    ? Lb.showingLatestRemarks.replace('{n}', LATEST_LIMIT).replace('{total}', remarkCalls.length)
+    : '';
+
+  document.getElementById('calls-summary-line').innerHTML =
+    `<i data-lucide="sparkles" class="w-3.5 h-3.5 text-gbCall shrink-0 mt-0.5"></i><span><b class="text-[10px] uppercase text-gbCall mr-1">${Lb.aiCachedTag}</b>${c.callPatternSummary[L]}</span>`;
+}
+
+/* ============ Delivery (addresses, metric strip, summary) ============ */
+function renderDelivery(c, L){
+  const Lb = LABELS[L];
+  document.getElementById('delivery-metric-strip').innerHTML =
+    metricChip(Lb.successRateLabel, c.delivery.successRate + '%', '#1D9E75') +
+    metricChip(Lb.topCourierLabel, c.delivery.courier[L], '#1D9E75') +
+    metricChip(Lb.avgDeliveryShort, c.avgDeliveryDays + ' ' + Lb.days, '#1D9E75') +
+    metricChip(Lb.addrCountLabel, c.addresses.length, '#1D9E75');
+
+  document.getElementById('delivery-content').innerHTML = c.addresses.map(a => `
+    <div class="p-4 border rounded-lg bg-slate-50 mb-2">
+      <p class="font-bold text-sm text-slate-700 flex items-center gap-2">
+        <i data-lucide="map-pin" class="w-4 h-4 text-gbDelivery"></i> ${a.primary ? Lb.primaryAddr : ''}
+      </p>
+      <p class="text-xs text-slate-600 mt-1">${a[L]}</p>
+    </div>`).join('') + `
+    <div class="p-4 border rounded-lg">
+      <p class="text-xs text-slate-500">${Lb.topCourierLabel}: <b class="text-slate-700">${c.delivery.courier[L]}</b> (${Lb.successRateLabel}: ${c.delivery.successRate}%)</p>
+      <p class="text-xs text-slate-500 mt-1">${Lb.avgDeliveryTitle}: <b class="text-slate-700">${c.avgDeliveryDays} ${Lb.days}</b></p>
+    </div>`;
+
+  const summary = L==='bn'
+    ? `${c.delivery.courier.bn} দিয়ে ${c.delivery.successRate}% ডেলিভারি সফল হয়েছে, গড় সময় ${c.avgDeliveryDays} দিন। ${c.addresses.length > 1 ? c.addresses.length + 'টি ভিন্ন ঠিকানা ব্যবহার করেছেন।' : 'সবসময় একই ঠিকানায় ডেলিভারি নিয়েছেন।'}`
+    : `${c.delivery.successRate}% deliveries succeeded via ${c.delivery.courier.en}, averaging ${c.avgDeliveryDays} days. ${c.addresses.length > 1 ? 'Has used ' + c.addresses.length + ' different addresses.' : 'Always delivers to the same address.'}`;
+  document.getElementById('delivery-summary-line').innerHTML = `<i data-lucide="calculator" class="w-3.5 h-3.5 shrink-0 mt-0.5" style="color:#1D9E75"></i><span><b class="text-[10px] uppercase mr-1" style="color:#1D9E75">${Lb.computedTag}</b>${summary}</span>`;
+}
+
+function renderChannel(c, L){
+  const bar = (items) => items.map(i => `
+    <div class="mb-2">
+      <div class="flex justify-between text-xs text-slate-600 mb-1"><span>${i.label[L]}</span><span class="font-semibold">${i.pct}%</span></div>
+      <div class="w-full bg-slate-100 rounded-full h-2"><div class="bg-gbIdentity h-2 rounded-full" style="width:${i.pct}%"></div></div>
+    </div>`).join('');
+  document.getElementById('tab-content-channel').innerHTML = `
+    <div class="p-4 border rounded-lg">
+      <p class="font-bold text-sm text-slate-700 mb-3 flex items-center gap-2"><i data-lucide="radio-tower" class="w-4 h-4 text-gbIdentity"></i> ${LABELS[L].channelTitle}</p>
+      ${bar(c.channelBreakdown)}
+    </div>
+    <div class="p-4 border rounded-lg">
+      <p class="font-bold text-sm text-slate-700 mb-3 flex items-center gap-2"><i data-lucide="credit-card" class="w-4 h-4 text-gbProducts"></i> ${LABELS[L].paymentMethodTitle}</p>
+      ${bar(c.paymentBreakdown)}
+    </div>`;
+}
+
+/* ============ Heatmap with real dates + click ============ */
+function buildHeatmap(elementId, type, c){
+  const container = document.getElementById(elementId);
+  container.innerHTML = '';
+  const meta = [];
+  const today = new Date();
+  const days = 84;
+  // Saturated fills need a light date-number for contrast; pale fills need a dark one.
+  const DARK_BG = ['bg-lime-600', 'bg-purple-600'];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today); d.setDate(today.getDate() - i);
+    const cell = document.createElement('div');
+    cell.className = 'heatmap-cell';
+    const rand = Math.random();
+    let count = 0, negative = false, bgClass = '';
+    if (type === 'order') {
+      if (rand > 0.85) { bgClass = 'bg-lime-600'; count = Math.ceil(rand*4); }
+      else if (rand > 0.65) { bgClass = 'bg-lime-400'; count = 2; }
+      else if (rand > 0.45) { bgClass = 'bg-lime-200'; count = 1; }
+      else bgClass = 'bg-slate-100';
+    } else {
+      if (rand > 0.85) { bgClass = 'bg-purple-600'; count = Math.ceil(rand*3); }
+      else if (rand > 0.70) { bgClass = 'bg-purple-300'; count = 2; }
+      else if (rand > 0.55) { bgClass = 'bg-red-300'; count = 1; negative = true; }
+      else bgClass = 'bg-slate-100';
+    }
+    cell.classList.add(bgClass);
+    const dateNum = document.createElement('span');
+    dateNum.className = 'heatmap-date ' + (DARK_BG.includes(bgClass) ? 'on-dark' : 'on-light');
+    dateNum.textContent = d.getDate();
+    cell.appendChild(dateNum);
+    const dateStr = d.toLocaleDateString(currentLang==='bn' ? 'bn-BD' : 'en-US', {day:'numeric', month:'short', year:'numeric'});
+    cell.title = dateStr + (count ? ` — ${count}` : '');
+    cell.onclick = () => openDayDrawer(dateStr, type, count, negative, c);
+    container.appendChild(cell);
+    meta.push({date:dateStr, count, negative});
+  }
+  heatmapMeta[type] = meta;
+}
+
+function renderMonthLabels(){
+  const today = new Date();
+  const months = [];
+  for (let i = 2; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    months.push(d.toLocaleDateString(currentLang==='bn' ? 'bn-BD' : 'en-US', {month:'long'}));
+  }
+  document.getElementById('order-heatmap-months').innerHTML = months.map(m=>`<span>${m}</span>`).join('');
+  document.getElementById('call-heatmap-months').innerHTML = months.map(m=>`<span>${m}</span>`).join('');
+}
+
+function openDayDrawer(dateStr, type, count, negative, c){
+  const L = currentLang;
+  document.getElementById('day-drawer-title').textContent = dateStr;
+  let html = '';
+  if (count === 0) {
+    html = `<p class="text-slate-400 text-sm">${LABELS[L].noDayData}</p>`;
+  } else if (type === 'order') {
+    html = `<div class="p-3 border rounded-lg bg-slate-50">
+      <p class="font-semibold text-slate-700 mb-1 flex items-center gap-1"><i data-lucide="package" class="w-4 h-4 text-gbTrust"></i> ${LABELS[L].dayOrdersTitle}: ${count}</p>
+      <p class="text-xs text-slate-500">${L==='bn' ? 'এই দিনে গ্রাহকের অর্ডার কার্যকলাপ রেকর্ড করা হয়েছে। বিস্তারিত ইনভয়েসের জন্য Orders ট্যাব দেখুন।' : 'Order activity was recorded for this customer on this day. See the Orders tab for invoice details.'}</p>
+    </div>`;
+  } else {
+    html = `<div class="p-3 border rounded-lg ${negative ? 'bg-red-50' : 'bg-slate-50'}">
+      <p class="font-semibold text-slate-700 mb-1 flex items-center gap-1"><i data-lucide="phone-call" class="w-4 h-4 text-gbCall"></i> ${LABELS[L].dayCallsTitle}: ${count}</p>
+      <p class="text-xs ${negative ? 'text-gbRisk' : 'text-slate-500'}">${negative ? (L==='bn'?'এই দিনের কলে নেগেটিভ আউটকাম (Unreachable/Not Interested) রেকর্ড হয়েছে।':'A negative call outcome (Unreachable/Not Interested) was recorded this day.') : (L==='bn'?'কলের বিস্তারিত জন্য Call History ট্যাব দেখুন।':'See the Call History tab for details.')}</p>
+    </div>`;
+  }
+  document.getElementById('day-drawer-content').innerHTML = html;
+  document.getElementById('day-drawer').classList.remove('translate-x-full');
+  document.getElementById('drawer-backdrop').classList.remove('hidden');
+  lucide.createIcons();
+}
+function closeDayDrawer(){ document.getElementById('day-drawer').classList.add('translate-x-full'); checkBackdrop(); }
+function closeAllDrawers(){
+  document.getElementById('day-drawer').classList.add('translate-x-full');
+  document.getElementById('action-drawer').classList.add('translate-x-full');
+  document.getElementById('drawer-backdrop').classList.add('hidden');
+}
+function checkBackdrop(){
+  const dayOpen = !document.getElementById('day-drawer').classList.contains('translate-x-full');
+  const actionOpen = !document.getElementById('action-drawer').classList.contains('translate-x-full');
+  if (!dayOpen && !actionOpen) document.getElementById('drawer-backdrop').classList.add('hidden');
+}
+
+/* ============ Tabs ============ */
+function switchTab(tabName, filter){
+  document.querySelectorAll('.gb-left-item').forEach(el => el.classList.toggle('active', el.dataset.sideTab === tabName));
+  activeOrderFilter = filter || null;
+  ordersShowAll = false;
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('.tab-btn').forEach(el => {
+    el.classList.remove('border-gbIdentity', 'text-gbIdentity', 'bg-white');
+    el.classList.add('border-transparent', 'text-slate-500');
+  });
+  document.getElementById(`tab-content-${tabName}`).classList.remove('hidden');
+  const activeBtn = document.getElementById(`tab-btn-${tabName}`);
+  activeBtn.classList.add('border-gbIdentity', 'text-gbIdentity', 'bg-white');
+  activeBtn.classList.remove('border-transparent', 'text-slate-500');
+  if (tabName === 'orders' && currentCustomerKey) renderOrders(CUSTOMERS[currentCustomerKey], currentLang);
+  lucide.createIcons();
+}
+
+/* ============ Backend API wiring ============ */
+const API_BASE = 'http://127.0.0.1:8000/api';
+
+// No login UI exists yet — auth.py expects "Authorization: Bearer <token>"
+// matching a real dcm.users.current_session_token value. Paste one here
+// for testing (see the backend's curl/Postman testing notes for how to
+// set one via SQL). Left blank, requests will get 401 from the backend.
+const AUTH_TOKEN = 'ec87fb0d-fbb7-45f9-9d8b-b04f3ce03d44';
+
+function authHeaders(){
+  return AUTH_TOKEN ? { 'Authorization': `Bearer ${AUTH_TOKEN}` } : {};
+}
+
+function showLoading(isLoading){
+  const overlay = document.getElementById('loading-overlay');
+  if (!overlay) return;
+  if (isLoading) {
+    document.getElementById('loading-text').textContent = currentLang === 'bn' ? 'লোড হচ্ছে...' : 'Loading...';
+  }
+  overlay.classList.toggle('hidden', !isLoading);
+  document.getElementById('search-input').disabled = isLoading;
+  if (isLoading) lucide.createIcons();
+}
+
+function bnEn(text){
+  const t = text || '';
+  return { bn: t, en: t };
+}
+
+// Known enum values the backend returns as plain codes (segment/badge
+// labels) — mapped to bn/en display text client-side, matching the
+// approach documented in schemas.py.
+const ENUM_LABELS = {
+  'VIP Customer': { bn: 'ভিআইপি কাস্টমার', en: 'VIP Customer' },
+  'Loyal':        { bn: 'অনুগত গ্রাহক',     en: 'Loyal' },
+  'New':          { bn: 'নতুন গ্রাহক',      en: 'New' },
+  'Dormant':      { bn: 'সুপ্ত গ্রাহক',     en: 'Dormant' },
+  'At-Risk':      { bn: 'ঝুঁকিপূর্ণ',        en: 'At-Risk' },
+};
+function enumLabel(text){ return ENUM_LABELS[text] || bnEn(text); }
+
+// The backend returns raw agent_assignment_history.new_status values
+// (e.g. "Order Placed", "Unreachable"), not the prototype's
+// positive/follow/negative dot codes — this is a UI-only classification,
+// not stored anywhere.
+const NEGATIVE_CALL_STATUSES = ['Unreachable', 'Switch Off', 'Not Interested', 'Aborted'];
+const POSITIVE_CALL_STATUSES = ['Order Placed', 'Recently Ordered', 'Interested'];
+function mapCallStatus(newStatus){
+  if (NEGATIVE_CALL_STATUSES.includes(newStatus)) return 'negative';
+  if (POSITIVE_CALL_STATUSES.includes(newStatus)) return 'positive';
+  return 'follow';
+}
+
+// dcm.agent_assignment_history.previous_status/new_status are free text
+// typed/picked by agents (no DB enum) — this covers the values seen in
+// practice and falls back to the raw string for anything not listed, so
+// an unmapped status still shows something sensible instead of "Unknown".
+const STATUS_LABELS_BN = {
+  'Interested': 'আগ্রহী',
+  'Not Interested': 'অনাগ্রহী',
+  'Unreachable': 'অসাড় (রিচ করা যায়নি)',
+  'Switch Off': 'ফোন বন্ধ',
+  'Order Placed': 'অর্ডার প্লেসড',
+  'Recently Ordered': 'সম্প্রতি অর্ডার করেছেন',
+  'Callback Request': 'কলব্যাক অনুরোধ',
+  'In Transit': 'ইন ট্রানজিট',
+  'Follow Up': 'ফলো আপ',
+  'Follow-up': 'ফলো আপ',
+  'Delivered': 'ডেলিভার্ড',
+  'Cancelled': 'বাতিল',
+  'Returned': 'রিটার্ন',
+  'Aborted': 'অ্যাবোর্টেড',
+  'Inform Later': 'পরে জানানো হবে',
+};
+function translateStatus(status, L){
+  if (!status) return '';
+  return L === 'bn' ? (STATUS_LABELS_BN[status] || status) : status;
+}
+
+const BN_DIGITS = ['০','১','২','৩','৪','৫','৬','৭','৮','৯'];
+function toBnDigits(n){ return String(n).replace(/[0-9]/g, d => BN_DIGITS[+d]); }
+const BN_MONTHS = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
+const EN_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+// Formats the raw ISO created_at from agent_assignment_history into a
+// human-readable date (no time) for the Call History sentence — e.g.
+// "৩১ জুলাই, ২০২৬" (bn) / "Jul 31, 2026" (en).
+function formatCallDate(isoStr, L){
+  if (!isoStr) return '';
+  const d = new Date(isoStr);
+  if (isNaN(d.getTime())) return isoStr;
+  const day = d.getDate(), month = d.getMonth(), year = d.getFullYear();
+  return L === 'bn'
+    ? `${toBnDigits(day)} ${BN_MONTHS[month]}, ${toBnDigits(year)}`
+    : `${EN_MONTHS[month]} ${day}, ${year}`;
+}
+
+// delivery is a per-courier breakdown (spec query 5.5); the prototype's
+// UI wants a single top courier + rate, so pick the highest-volume one.
+function pickTopDelivery(deliveryList){
+  if (!deliveryList || !deliveryList.length) return { courier: bnEn(''), successRate: 0 };
+  const top = deliveryList.slice().sort((a, b) => (b.total || 0) - (a.total || 0))[0];
+  return { courier: bnEn(top.courier), successRate: top.success_rate_pct || 0 };
+}
+
+/* Maps GET /api/customer/{phone}'s JSON onto the shape renderCustomer()/
+   renderOrders()/renderProducts()/renderCalls()/renderDelivery()/
+   renderChannel() already expect. DB-sourced single-language fields
+   (name, address, product/courier/reason/note text) are wrapped as
+   {bn:x, en:x} since the backend can't manufacture a translation — see
+   schemas.py's documented bn/en decision. Fields the backend doesn't
+   source yet (tenure, preferredContactTime, topCategory, avgDeliveryDays,
+   channel/payment breakdown) fall back to empty/zero rather than crashing. */
+function mapApiResponseToCustomer(api){
+  const m = api.metrics || {};
+  const cs = api.call_stats || {};
+  const ai = api.ai_summary || {};
+  const topDelivery = pickTopDelivery(api.delivery);
+  return {
+    phone: api.phone,
+    name: api.name || (currentLang === 'bn' ? '(নাম পাওয়া যায়নি)' : '(name unavailable)'),
+    tier: api.tier || 'red',
+    addresses: (api.addresses && api.addresses.length)
+      ? api.addresses.map(a => ({ ...bnEn(a.text), primary: a.primary }))
+      : [{ ...bnEn(currentLang === 'bn' ? 'ঠিকানা পাওয়া যায়নি' : 'No address on file'), primary: true }],
+    segment: enumLabel(api.segment || ''),
+    tenure: bnEn(''),
+    preferredContactTime: bnEn(''),
+    topCategory: bnEn(''),
+    topCategoryPct: 0,
+    avgDeliveryDays: 0,
+    reliabilityScore: api.reliability_score != null ? api.reliability_score : 0,
+    consent: ai.consent_signal === 'do_not_call' ? 'donotcall' : (ai.consent_signal || null),
+    interestedIn: { bn: ai.interested_in_bn || [], en: ai.interested_in_en || [] },
+    badges: (api.badges || []).map(b => ({ icon: b.icon, color: b.color, label: enumLabel(b.label), filter: b.filter })),
+    due: api.due_amount || 0,
+    // generated_at is only set once the background job has actually run
+    // for this customer — null means "not generated yet" (a real, expected
+    // state for most customers right now), not an error.
+    hasAiSummary: !!ai.generated_at,
+    aiSummaryShort: bnEn(ai.short_bn || ai.short_en || ''),
+    notesCount: ai.notes_count || 0,
+    aiSummaryFull: { bn: ai.full_bn || [], en: ai.full_en || [] },
+    metrics: {
+      totalOrders: m.total_orders || 0,
+      ltv: m.ltv || 0,
+      aov: m.aov || 0,
+      cancelRate: m.cancel_rate_pct || 0,
+      returnRate: m.return_rate_pct || 0,
+      recencyDays: m.recency_days != null ? m.recency_days : 0,
+      lastOrderDate: bnEn(m.last_order_date || (currentLang === 'bn' ? 'তথ্য নেই' : 'N/A')),
+    },
+    callStats: {
+      totalAttempts: cs.total_attempts || 0,
+      reachRate: cs.reach_rate_pct || 0,
+      conversionRate: cs.conversion_rate_pct || 0,
+      unreachableStreak: cs.unreachable_streak || 0,
+    },
+    callPatternSummary: bnEn(ai.call_pattern_bn || ai.call_pattern_en || ''),
+    orders: (api.orders || []).map(o => ({
+      invoice: o.invoice,
+      status: o.status,
+      date: bnEn(o.date || ''),
+      deliveryFee: o.delivery_fee || 0,
+      paid: o.paid_amount || 0,
+      due: o.due_amount || 0,
+      courier: bnEn(o.courier || ''),
+      deliveryId: o.delivery_id || '',
+      method: bnEn(o.payment_method || ''),
+      reason: o.cancelled_flagged_reason ? bnEn(o.cancelled_flagged_reason) : null,
+      // Not part of the API response yet (TestMaster has no discount
+      // column) — kept here so the UI already supports it, falsy/0 for
+      // every real order today and simply hidden by renderOrders().
+      discount: o.discount || 0,
+      items: (o.items || []).map(it => ({
+        img: it.image || '',
+        name: bnEn(it.product_name || ''),
+        sku: it.product_sku || '',
+        qty: it.qty,
+        unitPrice: it.unit_price,
+      })),
+    })),
+    products: (api.products || []).map((p, i) => ({
+      img: '',
+      name: bnEn(p.product_name || ''),
+      count: p.bought_qty || 0,
+      returned: p.returned_qty || 0,
+      top: i === 0,
+    })),
+    calls: (api.calls || []).map(c => ({
+      dateRaw: c.date || '',
+      status: mapCallStatus(c.status),
+      newStatusRaw: c.status || '',
+      note: c.note || '',
+      agentName: c.agent_name || '',
+    })),
+    // Full status-change history breakdown (not just the last 5 calls
+    // shown in the list) — backend already computes count+pct across
+    // every call, sorted by count DESC.
+    callStatusBreakdown: (api.call_status_breakdown || []).map(x => ({
+      status: x.status, count: x.count, pct: x.pct,
+    })),
+    delivery: { courier: topDelivery.courier, successRate: topDelivery.successRate },
+    channelBreakdown: (api.channel_breakdown || []).map(x => ({ label: bnEn(x.label), pct: x.pct })),
+    paymentBreakdown: (api.payment_breakdown || []).map(x => ({ label: bnEn(x.label), pct: x.pct })),
+  };
+}
+
+async function loadCustomerFromAPI(phone){
+  const errBox = document.getElementById('search-error');
+  errBox.classList.add('hidden');
+  showLoading(true);
+  try {
+    const res = await fetch(`${API_BASE}/customer/${phone}`, { headers: authHeaders() });
+
+    if (res.status === 404) {
+      errBox.textContent = LABELS[currentLang].searchNotFound;
+      errBox.classList.remove('hidden');
+      return;
+    }
+    if (res.status === 401 || res.status === 403) {
+      errBox.textContent = currentLang === 'bn'
+        ? 'সেশন যাচাই ব্যর্থ হয়েছে — AUTH_TOKEN ঠিক আছে কিনা দেখুন।'
+        : 'Session check failed — verify AUTH_TOKEN is set correctly.';
+      errBox.classList.remove('hidden');
+      return;
+    }
+    if (!res.ok) {
+      // Server WAS reached (this is different from the catch block below,
+      // which only fires when fetch() itself can't even get a response).
+      // Surface the body if the backend sent error detail (FastAPI does,
+      // as {"detail": "..."}), so a 500 says why, not just "can't connect".
+      let detail = '';
+      try {
+        const body = await res.json();
+        if (body && body.detail) detail = `: ${body.detail}`;
+      } catch (_) { /* body wasn't JSON — ignore */ }
+      errBox.textContent = currentLang === 'bn'
+        ? `সার্ভার একটা এরর দিয়েছে (status ${res.status})${detail}`
+        : `Server returned an error (status ${res.status})${detail}`;
+      errBox.classList.remove('hidden');
+      return;
+    }
+
+    const data = await res.json();
+    CUSTOMERS[phone] = mapApiResponseToCustomer(data);
+    loadCustomer(phone);
+    refreshRecentFromAPI();
+  } catch (err) {
+    // This catch only fires when fetch() itself rejects — a genuine
+    // network-level failure (wrong URL, server down, or the browser
+    // blocking the request outright, e.g. from file://). Any real HTTP
+    // response, including 500, is handled above and never reaches here.
+    console.error('GET /api/customer/{phone} — network/connection failure:', err);
+    errBox.textContent = currentLang === 'bn'
+      ? 'সার্ভারের সাথে সংযোগ করা যায়নি (customer profile লোড করার সময়)। ব্যাকএন্ড (uvicorn) চালু আছে কিনা দেখুন। এই পেজটা file:// দিয়ে সরাসরি খোলা থাকলে, তার বদলে "python -m http.server" দিয়ে সার্ভ করে দেখুন — অনেক ব্রাউজার file:// পেজ থেকে fetch() ব্লক করে দেয়।'
+      : 'Could not reach the server (while loading customer profile). Check that the backend (uvicorn) is running. If this page is open via file://, try serving it with "python -m http.server" instead — many browsers block fetch() from file:// pages outright.';
+    errBox.classList.remove('hidden');
+  } finally {
+    showLoading(false);
+  }
+}
+
+/* ============ Search ============ */
+function normalizePhone(raw){
+  let digits = raw.replace(/\D/g, '');
+  if (digits.startsWith('880')) digits = digits;
+  else if (digits.startsWith('0')) digits = '880' + digits.slice(1);
+  else if (digits.length === 10) digits = '880' + digits;
+  return digits;
+}
+
+function doSearch(){
+  const raw = document.getElementById('search-input').value.trim();
+  if (!raw) return;
+  const key = normalizePhone(raw);
+  document.getElementById('search-input').value = '';
+  loadCustomerFromAPI(key);
+}
+
+function loadCustomer(key){
+  currentCustomerKey = key;
+  activeOrderFilter = null;
+  ordersShowAll = false;
+  productsShowAll = false;
+  renderCustomer();
+  switchTab('orders');
+}
+
+let recentSearchList = [];
+
+async function refreshRecentFromAPI(){
+  try {
+    const res = await fetch(`${API_BASE}/search/recent`, { headers: authHeaders() });
+    if (!res.ok) {
+      // Distinct from loadCustomerFromAPI's error — this is the
+      // "recent searches" section specifically, not the main profile
+      // fetch, and it's non-fatal (search still works without it).
+      console.error('GET /api/search/recent returned', res.status);
+      showRecentError(res.status);
+      return;
+    }
+    recentSearchList = await res.json();
+    renderRecent();
+  } catch (err) {
+    console.error('GET /api/search/recent — network/connection failure:', err);
+    showRecentError(null);
+  }
+}
+
+function showRecentError(status){
+  const box = document.getElementById('recent-chips');
+  const detail = status ? ` (status ${status})` : '';
+  const msg = currentLang === 'bn'
+    ? `সাম্প্রতিক সার্চ লোড করা যায়নি${detail}`
+    : `Could not load recent searches${detail}`;
+  box.innerHTML = `<span class="text-[10px] text-gbRisk">${msg}</span>`;
+}
+
+function renderRecent(){
+  const box = document.getElementById('recent-chips');
+  box.innerHTML = recentSearchList.map(item => {
+    const label = item.name || item.phone;
+    return `<button onclick="loadCustomerFromAPI('${item.phone}')" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-medium transition">${label}</button>`;
+  }).join('');
+}
+
+/* ============ AI summary toggle ============ */
+function toggleAISummary(){
+  if (!currentCustomerKey) return;
+  const full = document.getElementById('ai-summary-full');
+  const chevron = document.getElementById('ai-summary-chevron');
+  const label = document.getElementById('ai-summary-toggle-label');
+  const c = CUSTOMERS[currentCustomerKey];
+  const showing = full.classList.contains('hidden');
+  full.classList.toggle('hidden');
+  chevron.classList.toggle('chevron-rot');
+  label.textContent = showing
+    ? LABELS[currentLang].aiDetailsHide
+    : (currentLang==='bn' ? `${LABELS.bn.aiDetailsShow} (${c.notesCount}টি নোট থেকে প্রাপ্ত)` : `${LABELS.en.aiDetailsShow} (from ${c.notesCount} notes)`);
+}
+
+/* ============ Action panel ============ */
+function toggleActionPanel(){
+  const drawer = document.getElementById('action-drawer');
+  drawer.classList.toggle('translate-x-full');
+  const isOpen = !drawer.classList.contains('translate-x-full');
+  if (isOpen) document.getElementById('drawer-backdrop').classList.remove('hidden');
+  else checkBackdrop();
+}
+let selectedStatus = null;
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.status-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('ring-2','ring-gbIdentity'));
+      btn.classList.add('ring-2','ring-gbIdentity');
+      selectedStatus = btn.textContent;
+    });
+  });
+});
+function saveAction(){
+  toggleActionPanel();
+  document.getElementById('remark-box').value = '';
+  showToast(LABELS[currentLang].saveToast);
+}
+
+/* ============ Toast / clipboard ============ */
+function showToast(text){
+  const toast = document.getElementById('toast');
+  document.getElementById('toast-text').textContent = text;
+  toast.classList.remove('hidden');
+  toast.style.opacity = '1';
+  setTimeout(() => { toast.style.opacity = '0'; setTimeout(()=>toast.classList.add('hidden'), 250); }, 1800);
+}
+function copyText(text){
+  navigator.clipboard.writeText(text).then(() => showToast(LABELS[currentLang].copyToast));
+}
+
+/* ============ Language toggle ============ */
+function toggleLanguage(){
+  currentLang = currentLang === 'bn' ? 'en' : 'bn';
+  const bnBtn = document.getElementById('lang-bn');
+  const enBtn = document.getElementById('lang-en');
+  if (currentLang === 'en') {
+    bnBtn.className = 'text-slate-500 px-2 py-1';
+    enBtn.className = 'bg-white text-slate-800 px-2 py-1 rounded-full shadow-sm';
+    document.documentElement.lang = 'en';
+  } else {
+    enBtn.className = 'text-slate-500 px-2 py-1';
+    bnBtn.className = 'bg-white text-slate-800 px-2 py-1 rounded-full shadow-sm';
+    document.documentElement.lang = 'bn';
+  }
+  applyStaticLabels();
+  if (currentCustomerKey) renderCustomer();
+  renderRecent();
+}
+
+/* ============ Keyboard shortcuts ============ */
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    document.getElementById('search-input').focus();
+  }
+  if (e.key === '/' && document.activeElement.id !== 'search-input') {
+    e.preventDefault();
+    document.getElementById('search-input').focus();
+  }
+  if (e.key === 'Escape') closeAllDrawers();
+});
+document.getElementById('search-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') doSearch();
+});
+
+/* ============ Init ============ */
+lucide.createIcons();
+applyStaticLabels();
+switchTab('orders'); // just sets tab styling — no customer loaded yet, guarded above
+refreshRecentFromAPI();
+</script>
+</body>
+</html>
