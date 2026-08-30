@@ -1,0 +1,236 @@
+"""
+Pydantic response models.
+
+Responsibility:
+- Define response schemas for GET /api/customer/{phone},
+  POST /api/customer-calls/{id}/update, and GET /api/search/recent.
+- Field names/structure should mirror the frontend prototype's
+  CUSTOMERS object wherever reasonably possible (exact shape to be
+  confirmed per-endpoint before wiring to the database).
+
+CONFIRMED 2026-08-12: the prototype's CUSTOMERS object stores every
+dynamic string as a {bn, en} pair (name, address, courier, reason,
+note, ...). Real SQL Server data (name, address, order/call fields) is
+stored in a single language per row — whatever the agent/customer
+typed — so the backend cannot manufacture a translation for those.
+This schema returns that DB-sourced dynamic text as plain strings and
+returns status/tier/segment/consent as language-neutral codes (e.g.
+"delivered", "gold", "given") so the frontend's existing LABELS dict
+renders the bn/en label itself. The one exception is AISummary: Gemini
+genuinely generates both languages per call, so those fields carry
+real _bn/_en pairs, unlike the rest of this schema.
+"""
+
+import datetime as dt
+from typing import Optional
+
+from pydantic import BaseModel
+
+# CONFIRMED FIX 2026-08-12: `Order.date` and `Optional[datetime.date]` both
+# use the bare name "date" — importing `date`/`datetime` directly (via
+# `from datetime import date, datetime`) makes a field literally named
+# `date` shadow the imported type during pydantic's internal annotation
+# resolution (it resolves names against the class's own attributes,
+# `vars(cls)`, which by then contains `date = None`). That silently turns
+# `Optional[date]` into `Optional[None]` == NoneType, causing pydantic to
+# reject every real date value ("Input should be None"). Importing the
+# module under an alias (`dt`) and always writing `dt.date`/`dt.datetime`
+# avoids the name collision entirely, for every field below and any
+# future one.
+
+
+class Address(BaseModel):
+    text: str
+    primary: bool
+
+
+class Badge(BaseModel):
+    icon: str
+    color: str
+    label: str
+    filter: Optional[str] = None
+
+
+class OrderItem(BaseModel):
+    image: Optional[str] = None
+    product_name: str
+    product_sku: Optional[str] = None
+    qty: int
+    unit_price: float
+    # CancelledReturnedDamagedQty — a per-line-item quantity, same shape as
+    # qty, not a repeated invoice-level value. 0 for the ~27% of rows where
+    # TestMaster doesn't populate it, not a real "zero damaged" claim.
+    damaged_qty: float = 0
+
+
+class OrderTimeline(BaseModel):
+    """CreationDate/ShippingDate/ShippedAt/DeliveredAt — TestMaster stores
+    all four as varchar, hence TRY_CONVERT(date, ...) on every one in the
+    query (metrics.py get_order_rows()). Any step not yet reached is None,
+    not a fabricated date — the frontend's timeline stepper reads that as
+    "not there yet" rather than treating a missing step as an error."""
+    order_date: Optional[dt.date] = None
+    shipping_date: Optional[dt.date] = None
+    shipped_at: Optional[dt.date] = None
+    delivered_at: Optional[dt.date] = None
+
+
+class Order(BaseModel):
+    invoice: str
+    status: str  # delivered | cancelled | returned | intransit
+    date: Optional[dt.date] = None
+    delivery_fee: float
+    paid_amount: float
+    due_amount: float
+    courier: Optional[str] = None
+    delivery_id: Optional[str] = None
+    payment_method: Optional[str] = None
+    cancelled_flagged_reason: Optional[str] = None
+    # DeliveryPartnerStatus: the courier's OWN tracking status — a
+    # separate TestMaster column from the business `status` above, and can
+    # disagree with it (e.g. status='intransit' but the courier already
+    # marked delivered). CONFIRMED 2026-08-30, 45% populated table-wide.
+    delivery_partner_status: Optional[str] = None
+    pickup_location: Optional[str] = None
+    timeline: OrderTimeline
+    items: list[OrderItem]
+
+
+class ProductPreference(BaseModel):
+    product_name: str
+    product_sku: Optional[str] = None
+    # How many separate orders included this product (COUNT(DISTINCT
+    # Invoice)) — the "times bought" figure. Distinct from bought_qty
+    # (total pieces across all those orders), which a single bulk order
+    # can inflate without the product actually being a repeat purchase.
+    bought_count: int
+    bought_qty: int
+    returned_qty: int
+    return_rate_pct: float
+    is_top: bool = False
+
+
+class Metrics(BaseModel):
+    total_orders: int
+    ltv: float
+    aov: float
+    cancel_rate_pct: float
+    return_rate_pct: float
+    recency_days: Optional[int] = None
+    last_order_date: Optional[dt.date] = None
+
+
+class CallStats(BaseModel):
+    total_attempts: int
+    reach_rate_pct: float
+    conversion_rate_pct: float
+    unreachable_streak: int
+
+
+class CallHistoryEntry(BaseModel):
+    date: Optional[dt.datetime] = None
+    type: Optional[str] = None
+    status: Optional[str] = None  # positive | follow | negative
+    previous_status: Optional[str] = None
+    note: Optional[str] = None
+    agent_name: Optional[str] = None
+
+
+class DeliveryPartnerPerformance(BaseModel):
+    courier: str
+    total: int
+    success_rate_pct: float
+
+
+class DeliverySummary(BaseModel):
+    """CancelledReturnedDamagedQty vs. total ProductQty ordered — see
+    metrics.get_damage_rate()."""
+    total_qty: float = 0
+    damaged_qty: float = 0
+    damage_rate_pct: float = 0
+
+
+class BreakdownItem(BaseModel):
+    label: str
+    pct: float
+
+
+class CallStatusBreakdownItem(BaseModel):
+    status: str
+    count: int
+    pct: float
+
+
+class AISummary(BaseModel):
+    # CONFIRMED 2026-08-12 — Gemini generates both languages in one call
+    # (single prompt, JSON output with _bn/_en keys), so the response
+    # carries both and the frontend's language toggle picks between them
+    # client-side rather than the backend picking one.
+    short_bn: Optional[str] = None
+    short_en: Optional[str] = None
+    full_bn: list[str] = []
+    full_en: list[str] = []
+    call_pattern_bn: Optional[str] = None
+    call_pattern_en: Optional[str] = None
+    consent_signal: Optional[str] = None  # given | do_not_call | unclear
+    interested_in_bn: list[str] = []
+    interested_in_en: list[str] = []
+    notes_count: int = 0
+    generated_at: Optional[dt.datetime] = None
+    is_cached: bool = True
+
+
+class CustomerProfileResponse(BaseModel):
+    phone: str
+    # name/address: CONFIRMED 2026-08-12 (Test.dbo.TestMaster, most
+    # recent order). segment/due_amount/reliability_score: CONFIRMED
+    # 2026-08-12 — see routers/customer.py for how each is derived.
+    name: Optional[str] = None
+    tier: Optional[str] = None  # gold | green | red
+    segment: Optional[str] = None
+    addresses: list[Address] = []
+    due_amount: float = 0
+    reliability_score: Optional[int] = None
+    badges: list[Badge] = []
+    metrics: Metrics
+    orders: list[Order]
+    products: list[ProductPreference]
+    call_stats: CallStats
+    calls: list[CallHistoryEntry]
+    call_status_breakdown: list[CallStatusBreakdownItem] = []
+    delivery: list[DeliveryPartnerPerformance]
+    delivery_summary: DeliverySummary
+    pickup_breakdown: list[BreakdownItem] = []
+    channel_breakdown: list[BreakdownItem] = []
+    payment_breakdown: list[BreakdownItem] = []
+    ai_summary: AISummary
+
+
+class CallUpdateRequest(BaseModel):
+    status: str
+    remark: Optional[str] = None
+    # Optional reassignment — dcm.customer_calls.previous_agent_id exists
+    # specifically to track this, so a change here is a real, supported
+    # write path, not a guess.
+    assigned_agent_id: Optional[int] = None
+    # CONFIRMED 2026-08-12 — dcm.customer_calls.next_followup_date added
+    # via migrations/003_add_next_followup_date.sql.
+    next_followup_date: Optional[dt.date] = None
+
+
+class CallUpdateResponse(BaseModel):
+    customer_call_id: int
+    status: str
+    remark: Optional[str] = None
+    previous_status: Optional[str] = None
+    assigned_agent_id: Optional[int] = None
+    previous_agent_id: Optional[int] = None
+    next_followup_date: Optional[dt.date] = None
+    performed_by_id: int
+    updated_at: dt.datetime
+
+
+class RecentSearchItem(BaseModel):
+    phone: str
+    name: Optional[str] = None
+    searched_at: dt.datetime
