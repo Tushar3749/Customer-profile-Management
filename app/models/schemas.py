@@ -118,6 +118,13 @@ class Metrics(BaseModel):
     return_rate_pct: float
     recency_days: Optional[int] = None
     last_order_date: Optional[dt.date] = None
+    # CONFIRMED SOURCE 2026-09-01 — same MIN(CreationDate) already computed
+    # in get_core_metrics() and previously used ONLY internally (for the
+    # New-customer badge's tenure_days), never surfaced in the response.
+    # Frontend displays this as the identity card's "গ্রাহক থেকে" (customer
+    # since) field, same unformatted-ISO-date convention as last_order_date
+    # above (no separate bn/en formatting today).
+    first_order_date: Optional[dt.date] = None
 
 
 class CallStats(BaseModel):
@@ -155,6 +162,30 @@ class BreakdownItem(BaseModel):
     pct: float
 
 
+class DetailedBreakdownItem(BreakdownItem):
+    """Payment method / channel breakdown — richer than the plain
+    label+pct BreakdownItem (used by pickup_breakdown), with per-category
+    sales/invoice/qty/return detail from the same GROUP BY. See
+    metrics._get_breakdown_with_detail()."""
+    total_sales: float = 0
+    total_invoices: int = 0
+    total_qty: float = 0
+    total_returns: int = 0
+
+
+class OrderRemark(BaseModel):
+    """A cleaned AdditionalNote/InternalNotes value — see
+    metrics.get_order_remarks()/_clean_remark_text() for what's stripped
+    (audit trailers, warehouse-change system logs, malformed JSON note
+    wrappers) before a row counts as a real remark. `date` is the plain
+    order date (CreationDate); the frontend formats it per-language with
+    the same formatCallDate() helper the Calls tab already uses, so it
+    isn't pre-formatted Bengali text here."""
+    invoice: str
+    date: Optional[dt.date] = None
+    note: str
+
+
 class CallStatusBreakdownItem(BaseModel):
     status: str
     count: int
@@ -183,17 +214,34 @@ class AISummary(BaseModel):
 class CustomerProfileResponse(BaseModel):
     phone: str
     # name/address: CONFIRMED 2026-08-12 (Test.dbo.TestMaster, most
-    # recent order). segment/due_amount/reliability_score: CONFIRMED
-    # 2026-08-12 — see routers/customer.py for how each is derived.
+    # recent order). segment/reliability_score: CONFIRMED 2026-08-12 —
+    # see routers/customer.py for how each is derived.
     name: Optional[str] = None
     tier: Optional[str] = None  # gold | green | red
     segment: Optional[str] = None
     addresses: list[Address] = []
-    due_amount: float = 0
+    # due_amount REMOVED 2026-09-01 — was a customer-level SUM of
+    # due_amount across every order regardless of status, so a cancelled
+    # order's stray due_amount data still counted toward it, misleading.
+    # Per-order Order.due_amount (a single real invoice's due) is separate
+    # and unaffected.
     reliability_score: Optional[int] = None
+    # CONFIRMED SOURCE 2026-09-01 — metrics.get_avg_delivery_days()
+    # (ShippedAt -> DeliveredAt, per distinct invoice). None means no order
+    # has both dates populated yet, not "0 days" — frontend must render
+    # that as "no data", never as a literal 0.
+    avg_delivery_days: Optional[float] = None
+    # ADDED 2026-09-01 — metrics.derive_order_frequency(). category is
+    # 'weekly' | 'monthly' | 'occasional' | 'none' (English code, same
+    # backend-code + frontend-i18n-lookup pattern as tier/segment/order
+    # status); average_order_gap_days is None when there are fewer than 2
+    # orders to measure a gap between.
+    order_frequency_category: Optional[str] = None
+    average_order_gap_days: Optional[float] = None
     badges: list[Badge] = []
     metrics: Metrics
     orders: list[Order]
+    order_remarks: list[OrderRemark] = []
     products: list[ProductPreference]
     call_stats: CallStats
     calls: list[CallHistoryEntry]
@@ -201,8 +249,8 @@ class CustomerProfileResponse(BaseModel):
     delivery: list[DeliveryPartnerPerformance]
     delivery_summary: DeliverySummary
     pickup_breakdown: list[BreakdownItem] = []
-    channel_breakdown: list[BreakdownItem] = []
-    payment_breakdown: list[BreakdownItem] = []
+    channel_breakdown: list[DetailedBreakdownItem] = []
+    payment_breakdown: list[DetailedBreakdownItem] = []
     ai_summary: AISummary
 
 

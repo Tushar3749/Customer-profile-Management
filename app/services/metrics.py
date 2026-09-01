@@ -13,6 +13,9 @@ Responsibility:
   business' at the point they are defined.
 """
 
+import datetime as dt
+import re
+
 from app.db import fetch_all
 
 
@@ -50,8 +53,18 @@ def _trim(column: str) -> str:
     first, then trimming, is what actually collapses both variants of the
     same value into one. Used everywhere a TestMaster text column is
     grouped, joined, or compared (Invoice, ProductSKU, ProductName,
-    DeliveryPartner, PaymentMethod, OrderSource, PickUpLocation, ...)."""
-    return f"LTRIM(RTRIM(REPLACE(REPLACE(REPLACE({column}, CHAR(9), ' '), CHAR(13), ' '), CHAR(10), ' ')))"
+    DeliveryPartner, PaymentMethod, OrderSource, PickUpLocation, ...).
+
+    CONFIRMED FIX 2026-08-31 — also replaces CHAR(160) (non-breaking
+    space). Verified live: OrderSource has a real row storing
+    'DATA' + CHAR(160) + 'CALL' (an embedded NBSP, not a regular space)
+    — a plain '= DATA CALL' comparison in the channel CASE mapping below
+    would silently miss it and fall through to the ELSE/raw-passthrough
+    branch without this."""
+    return (
+        f"LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(REPLACE("
+        f"{column}, CHAR(9), ' '), CHAR(13), ' '), CHAR(10), ' '), CHAR(160), ' ')))"
+    )
 
 
 # --- Configurable business-rule constants -----------------------------
@@ -124,14 +137,27 @@ def get_order_rows(phone: str) -> list[dict]:
     ShippingDate/ShippedAt weren't read before. District/SUB_DISTRICT/
     ThanaName were checked (2026-08-30) and are 0-5% populated in this
     table — not read here; see the address-breakdown note in the Delivery
-    tab work for why that one was skipped."""
+    tab work for why that one was skipped.
+
+    CONFIRMED FIX 2026-09-01 — ShippedAt/DeliveredAt/ShippingDate wrap the
+    raw column in NULLIF(LTRIM(RTRIM(...)), '') before TRY_CONVERT, same
+    pattern as get_avg_delivery_days() below. Verified live against this
+    SQL Server instance: TRY_CONVERT(date, '') returns 1900-01-01, NOT
+    NULL — a real, sizeable data issue (73,292 blank ShippedAt rows,
+    392,120 blank DeliveredAt rows out of 5.8M, verified via direct COUNT)
+    that, without this guard, makes an in-transit order's still-empty
+    DeliveredAt "convert" to 1900-01-01 instead of staying null — which the
+    frontend's renderDeliveryTimeline() reads as `t[s.key]` truthy and
+    therefore marks the "Delivered" step as done. CreationDate is NOT
+    wrapped the same way — verified 0 blank rows out of 5.8M, so there is
+    no equivalent bug there today."""
     return fetch_all(
         f"""
         SELECT {_trim('Invoice')} AS Invoice,
                TRY_CONVERT(date, CreationDate) AS CreationDate,
-               TRY_CONVERT(date, ShippingDate) AS ShippingDate,
-               TRY_CONVERT(date, ShippedAt) AS ShippedAt,
-               TRY_CONVERT(date, DeliveredAt) AS DeliveredAt, Status,
+               TRY_CONVERT(date, NULLIF(LTRIM(RTRIM(ShippingDate)), '')) AS ShippingDate,
+               TRY_CONVERT(date, NULLIF(LTRIM(RTRIM(ShippedAt)), '')) AS ShippedAt,
+               TRY_CONVERT(date, NULLIF(LTRIM(RTRIM(DeliveredAt)), '')) AS DeliveredAt, Status,
                {_trim('ProductName')} AS ProductName,
                {_trim('ProductSKU')} AS ProductSKU,
                ProductQty, UnitPrice, TotalPrice,
@@ -218,6 +244,110 @@ def group_orders_by_invoice(rows: list[dict]) -> list[dict]:
             'damaged_qty': _to_float(row['CancelledReturnedDamagedQty']) or 0.0,
         })
     return list(orders.values())
+
+
+# --- Order remarks (AdditionalNote / InternalNotes cleaning) -----------
+# CONFIRMED 2026-08-31 — real InternalNotes values mix three system-
+# generated shapes with genuine human-written text, verified live against
+# this table:
+#  1. `[At HH:MM AM/PM On DD Mon YYYY By <agent name>]` — an audit trailer
+#     the system appends to EVERY note (human or not); stripped from
+#     anywhere in the string, not just the end, since it's never itself
+#     part of what an agent wrote.
+#  2. `[] | Warehouse changed to WH ID <N> by <agent> <id>. Note: <text>`
+#     — a warehouse-reassignment system log with an optional trailing
+#     human note. Real rows show the human part empty far more often than
+#     not (`...Note: ` with nothing after) — those rows are pure noise
+#     and skipped entirely, not shown as a blank remark.
+#  3. `"[{\note\":\"<text>` — a mis-escaped/truncated JSON note wrapper
+#     (upstream serialization bug: the closing `}]` is missing on every
+#     real row seen). <text> itself is a genuine agent shorthand note
+#     ("cnr", "call not answer", "off", ...) and is extracted, not
+#     discarded — only the JSON wrapper syntax around it is noise.
+# Also treated as non-meaningful (skipped, not shown as a remark):
+# NULL, empty string, the literal strings "nan"/"N/A" (see
+# _clean_nan_string() for the same "nan" artifact on a different column),
+# a bare `[]`, and a value that's nothing but a courier tracking URL
+# (auto-added, not agent-written context).
+_AUDIT_TRAILER_RE = re.compile(
+    r'\[At\s+\d{1,2}:\d{2}\s*[AP]M\s+On\s+\d{1,2}\s+\w+\s+\d{4}\s+By\s+[^\]]*\]',
+    re.IGNORECASE,
+)
+_WAREHOUSE_CHANGED_RE = re.compile(
+    r'(?:\[\]\s*\|\s*)?Warehouse changed to (?:Warehouse|WH)\s*ID\s*\d+[^.]*\.?\s*Note:\s*',
+    re.IGNORECASE,
+)
+_JSON_NOTE_WRAPPER_RE = re.compile(
+    r'^\s*"?\[\{\\?"?note\\?"?\s*:\s*\\?"(?P<note>.*)$',
+    re.IGNORECASE | re.DOTALL,
+)
+_REMARK_JUNK_EXACT = {'nan', 'n/a', 'na', '[]', '""', "''", '-', '.'}
+_URL_ONLY_RE = re.compile(r'^https?://\S+$', re.IGNORECASE)
+
+
+def _clean_remark_text(raw: str | None) -> str | None:
+    """Returns the meaningful human-written part of an AdditionalNote/
+    InternalNotes value, or None if the row is pure system noise. See the
+    module-level comment above for the three real noise shapes this
+    strips (audit trailer, warehouse-change log, malformed JSON wrapper)."""
+    if raw is None:
+        return None
+    text = raw.strip()
+    if not text:
+        return None
+    if len(text) >= 2 and text[0] == '"' and text[-1] == '"':
+        text = text[1:-1].strip()
+    m = _JSON_NOTE_WRAPPER_RE.match(text)
+    if m:
+        # The trailing `\"` (or several) is what's left of the JSON
+        # wrapper's own truncated closing syntax, not part of the note.
+        text = re.sub(r'\\+"?\s*$', '', m.group('note')).strip()
+    text = _WAREHOUSE_CHANGED_RE.sub('', text).strip()
+    text = _AUDIT_TRAILER_RE.sub('', text).strip()
+    text = re.sub(r'\s+', ' ', text).strip(' \'"|.,')
+    if not text:
+        return None
+    if text.lower() in _REMARK_JUNK_EXACT:
+        return None
+    if _URL_ONLY_RE.match(text):
+        return None
+    return text
+
+
+def get_order_remarks(phone: str, limit: int = 10) -> list[dict]:
+    """Latest `limit` meaningful remarks across AdditionalNote and cleaned
+    InternalNotes, newest first. One TestMaster row per product line item
+    repeats the same two note columns for every item on an invoice — DISTINCT
+    on (Invoice, CreationDate, AdditionalNote, InternalNotes) collapses that
+    back to one candidate pair per invoice before cleaning, so a 5-item
+    order doesn't produce the same remark 5 times."""
+    inv = _trim('Invoice')
+    rows = fetch_all(
+        f"""
+        SELECT DISTINCT {inv} AS Invoice,
+               TRY_CONVERT(date, CreationDate) AS CreationDate,
+               AdditionalNote, InternalNotes
+        FROM Test.dbo.TestMaster
+        WHERE CustomerPhoneNumber = ?
+          AND (AdditionalNote IS NOT NULL OR InternalNotes IS NOT NULL)
+        ORDER BY TRY_CONVERT(date, CreationDate) DESC
+        """,
+        (phone,),
+    )
+    remarks = []
+    for row in rows:
+        seen_for_invoice = set()
+        for raw in (row.get('AdditionalNote'), row.get('InternalNotes')):
+            cleaned = _clean_remark_text(raw)
+            if cleaned and cleaned not in seen_for_invoice:
+                seen_for_invoice.add(cleaned)
+                remarks.append({
+                    'invoice': row['Invoice'],
+                    'date': row['CreationDate'],
+                    'note': cleaned,
+                })
+    remarks.sort(key=lambda r: r['date'] or dt.date.min, reverse=True)
+    return remarks[:limit]
 
 
 def get_core_metrics(phone: str) -> dict:
@@ -441,13 +571,11 @@ def get_delivery_performance(phone: str) -> list[dict]:
 
 
 def _get_breakdown(phone: str, column: str) -> list[dict]:
-    """Shared implementation for channel/payment/pickup-location breakdown:
-    percentage of this customer's DISTINCT invoices per value of `column`.
-    Grouped from a DISTINCT (Invoice, column) subquery so a multi-line-item
-    invoice contributes once, not once per item — same double-counting
-    hazard as the CancelRatePct bug. Invoice and the target column are both
-    generically trimmed (see _trim()/get_order_rows()) so a whitespace-only
-    variant of the same invoice/value doesn't fragment the percentages."""
+    """Simple percentage-of-invoices breakdown for a raw TestMaster column
+    with no category normalization — used by get_pickup_location_breakdown()
+    only. Payment method and channel have their own real-category CASE
+    mapping and per-category detail metrics (get_payment_breakdown()/
+    get_channel_breakdown() below), so they no longer share this helper."""
     inv, col = _trim('Invoice'), _trim(column)
     rows = fetch_all(
         f"""
@@ -468,22 +596,115 @@ def _get_breakdown(phone: str, column: str) -> list[dict]:
     return rows
 
 
-def get_channel_breakdown(phone: str) -> list[dict]:
-    """Order channel (OrderSource column) breakdown by % of invoices."""
-    return _get_breakdown(phone, 'OrderSource')
-
-
-def get_payment_breakdown(phone: str) -> list[dict]:
-    """Payment method breakdown by % of invoices."""
-    return _get_breakdown(phone, 'PaymentMethod')
-
-
 def get_pickup_location_breakdown(phone: str) -> list[dict]:
     """Which warehouse (PickUpLocation) this customer's orders most often
     ship from, by % of invoices. CONFIRMED 2026-08-30 — 62.5% populated
     table-wide, well worth surfacing; District/SUB_DISTRICT/ThanaName were
     checked at the same time and are 0-5% populated, so those are skipped."""
     return _get_breakdown(phone, 'PickUpLocation')
+
+
+# CONFIRMED 2026-08-31 — real PaymentMethod values for this table have 31
+# distinct raw spellings (whitespace variants aside, already handled by
+# _trim()). This collapses them into the real payment-method vocabulary the
+# business actually uses; anything not covered by an explicit WHEN falls
+# through to ELSE (the trimmed raw value) rather than being silently
+# dropped or miscategorized.
+def _payment_method_case(trimmed_col: str) -> str:
+    return f"""
+        CASE
+          WHEN {trimmed_col} IN ('Cash On Delivery (COD)', 'COD', 'Cash On Delivery', 'COD-Partial', 'Cash') THEN 'Cash On Delivery'
+          WHEN {trimmed_col} LIKE '%Bkash%' OR {trimmed_col} LIKE '%BKash%' THEN 'bKash'
+          WHEN {trimmed_col} LIKE '%Nagad%' OR {trimmed_col} LIKE '%NAGAD%' THEN 'Nagad'
+          WHEN {trimmed_col} IN ('SSL Commerz', 'SSLCOMMERZ') THEN 'SSLCommerz'
+          WHEN {trimmed_col} IN ('Gate Pass', 'GIFT', 'Bank Payment', 'Not Paid', 'Promotional Purpose', 'Amar Pay', 'CTG Shop Sale') THEN N'অন্যান্য'
+          WHEN {trimmed_col} IN ('', '7', '0', 'Method #0') THEN N'অজানা'
+          ELSE {trimmed_col}
+        END
+    """
+
+
+# CONFIRMED 2026-08-31 — OrderSource mapping as given. Case-insensitive by
+# default collation (verified live: 'FACEBOOK' = 'Facebook' matches on this
+# instance), so the real ALL-CAPS variants (FACEBOOK/PHONE_CALL/TELESALES)
+# match these WHENs without needing separate uppercase branches. Anything
+# not covered by an explicit WHEN falls through to ELSE (trimmed raw value).
+def _channel_case(trimmed_col: str) -> str:
+    return f"""
+        CASE
+          WHEN {trimmed_col} = 'DATA CALL' THEN N'ডাটা কল'
+          WHEN {trimmed_col} = 'PHONE_CALL' THEN N'ফোন কল'
+          WHEN {trimmed_col} = 'Facebook' THEN N'ফেসবুক'
+          WHEN {trimmed_col} = 'Telesales' THEN N'টেলিসেলস'
+          WHEN {trimmed_col} = 'Mobile (Web)' THEN N'মোবাইল ওয়েবসাইট'
+          WHEN {trimmed_col} IN ('Website', 'Web') THEN N'ওয়েবসাইট'
+          WHEN {trimmed_col} = 'WhatsApp' THEN N'হোয়াটসঅ্যাপ'
+          WHEN {trimmed_col} = 'Android' THEN N'অ্যান্ড্রয়েড অ্যাপ'
+          WHEN {trimmed_col} = 'Offline' THEN N'অফলাইন'
+          ELSE {trimmed_col}
+        END
+    """
+
+
+def _get_breakdown_with_detail(phone: str, column: str, case_builder) -> list[dict]:
+    """Shared body for get_payment_breakdown()/get_channel_breakdown():
+    normalize `column` via `case_builder`'s CASE expression, group by the
+    normalized label, and compute per-category sales/invoice/qty/return
+    detail in the same GROUP BY — one query, not category count + 4 more.
+
+    Rows whose rounded percentage is 0.0 are dropped in Python (a category
+    can't literally have COUNT 0 in a GROUP BY result, but a single
+    invoice against a customer with hundreds can round to 0.0% at 1
+    decimal place — that's the case this actually guards against)."""
+    inv = _trim('Invoice')
+    label_expr = case_builder(_trim(column))
+    rows = fetch_all(
+        f"""
+        SELECT Label,
+          COUNT(DISTINCT Invoice) * 100.0 / SUM(COUNT(DISTINCT Invoice)) OVER () AS Pct,
+          COUNT(DISTINCT Invoice) AS TotalInvoices,
+          SUM(TotalPrice) AS TotalSales,
+          SUM(ProductQty) AS TotalQty,
+          COUNT(DISTINCT CASE WHEN Status = 'Returned' THEN Invoice END) AS TotalReturns
+        FROM (
+          SELECT {inv} AS Invoice, {label_expr} AS Label, TotalPrice, ProductQty, Status
+          FROM Test.dbo.TestMaster
+          WHERE CustomerPhoneNumber = ?
+        ) t
+        WHERE Label IS NOT NULL AND Label <> ''
+        GROUP BY Label
+        ORDER BY Pct DESC
+        """,
+        (phone,),
+    )
+    result = []
+    for row in rows:
+        pct = round(_to_float(row['Pct']) or 0.0, 1)
+        if pct <= 0:
+            continue
+        result.append({
+            'Label': row['Label'],
+            'Pct': pct,
+            'TotalInvoices': row['TotalInvoices'] or 0,
+            'TotalSales': _to_float(row['TotalSales']) or 0.0,
+            'TotalQty': _to_float(row['TotalQty']) or 0.0,
+            'TotalReturns': row['TotalReturns'] or 0,
+        })
+    return result
+
+
+def get_payment_breakdown(phone: str) -> list[dict]:
+    """Payment method breakdown, normalized from real raw spellings (see
+    _payment_method_case()) with per-category sales/invoice/qty/return
+    detail."""
+    return _get_breakdown_with_detail(phone, 'PaymentMethod', _payment_method_case)
+
+
+def get_channel_breakdown(phone: str) -> list[dict]:
+    """Order channel breakdown, normalized from real OrderSource values
+    (see _channel_case()) with per-category sales/invoice/qty/return
+    detail."""
+    return _get_breakdown_with_detail(phone, 'OrderSource', _channel_case)
 
 
 def get_damage_rate(phone: str) -> dict:
@@ -510,6 +731,47 @@ def get_damage_rate(phone: str) -> dict:
         'damaged_qty': damaged_qty,
         'damage_rate_pct': round(damaged_qty / total_qty * 100, 1) if total_qty else 0.0,
     }
+
+
+def get_avg_delivery_days(phone: str) -> float | None:
+    """Average ShippedAt -> DeliveredAt transit time in days, across this
+    customer's orders that have BOTH dates populated. Deduplicated to one
+    row per invoice first (same COUNT(DISTINCT Invoice) pattern as
+    get_delivery_performance()/get_core_metrics()'s CancelRatePct) so an
+    order with more line items doesn't get weighted more heavily in the
+    average than one with fewer — the exact bias the delivery-success-rate
+    fix above already had to correct for once. Returns None (not 0) when
+    no order has both dates populated, so callers can distinguish "no
+    delivery-timing data yet" from "0-day average".
+
+    CONFIRMED FIX 2026-09-01 — verified live against this SQL Server
+    instance: TRY_CONVERT(date, '') returns 1900-01-01, NOT NULL (a
+    documented SQL Server quirk for empty-string date conversion, distinct
+    from TRY_CONVERT(date, NULL) which correctly returns NULL). Real
+    TestMaster rows have DeliveredAt='' (empty string, not NULL) for
+    in-transit orders — without NULLIF(...,'') first, those rows silently
+    "converted" to 1900-01-01 instead of failing, producing a ~46,000-day-
+    negative average (caught via a direct DB check while verifying this
+    function, before it ever reached the API)."""
+    inv = _trim('Invoice')
+    row = fetch_all(
+        f"""
+        SELECT AVG(CAST(DATEDIFF(day, ShippedAtD, DeliveredAtD) AS FLOAT)) AS AvgDays
+        FROM (
+            SELECT DISTINCT {inv} AS Invoice,
+                   TRY_CONVERT(date, NULLIF(LTRIM(RTRIM(ShippedAt)), '')) AS ShippedAtD,
+                   TRY_CONVERT(date, NULLIF(LTRIM(RTRIM(DeliveredAt)), '')) AS DeliveredAtD
+            FROM Test.dbo.TestMaster
+            WHERE CustomerPhoneNumber = ?
+        ) t
+        WHERE ShippedAtD IS NOT NULL AND DeliveredAtD IS NOT NULL
+        """,
+        (phone,),
+    )
+    if not row:
+        return None
+    avg_days = _to_float(row[0].get('AvgDays'))
+    return round(avg_days, 1) if avg_days is not None else None
 
 
 def compute_overall_delivery_success_rate(delivery_rows: list[dict]) -> float | None:
@@ -561,6 +823,42 @@ def calculate_reliability_score(
 
 
 # --- Derived tags (badges) ---------------------------------------------
+
+# Thresholds as given directly in the 2026-09-01 request that introduced
+# this field — not independently business-confirmed the way the tier/
+# at-risk/dormant constants above are (those trace to the 2026-08-12
+# handoff spec). Flagging that distinction rather than mislabeling this
+# CONFIRMED like the others.
+ORDER_FREQUENCY_WEEKLY_MAX_GAP_DAYS = 10
+ORDER_FREQUENCY_MONTHLY_MAX_GAP_DAYS = 45
+
+
+def derive_order_frequency(
+    total_orders: int,
+    first_order_date,
+    last_order_date,
+) -> tuple[str, float | None]:
+    """('weekly' | 'monthly' | 'occasional' | 'none', avg_gap_days | None).
+
+    avg_gap_days = (last_order_date - first_order_date) / (total_orders - 1)
+    — needs at least 2 orders to measure a gap at all; a single-order (or
+    zero-order) customer returns ('none', None) rather than a division by
+    zero. Frontend maps the category code to bn/en display text + the
+    "গড়ে প্রতি X দিনে" subtitle, same pattern as tier/segment/order-status
+    codes elsewhere in this API (English code from the backend, i18n
+    lookup client-side)."""
+    if total_orders < 2 or not first_order_date or not last_order_date:
+        return 'none', None
+    span_days = (last_order_date - first_order_date).days
+    avg_gap = span_days / (total_orders - 1)
+    if avg_gap <= ORDER_FREQUENCY_WEEKLY_MAX_GAP_DAYS:
+        category = 'weekly'
+    elif avg_gap <= ORDER_FREQUENCY_MONTHLY_MAX_GAP_DAYS:
+        category = 'monthly'
+    else:
+        category = 'occasional'
+    return category, round(avg_gap, 1)
+
 
 def derive_tier(ltv: float, aov: float) -> str:
     """gold | green | red. Gold and green LTV/AOV cutoffs confirmed

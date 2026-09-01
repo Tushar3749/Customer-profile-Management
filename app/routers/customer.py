@@ -43,6 +43,7 @@ def get_customer_profile(phone: str, agent: dict = Depends(get_current_agent)):
     identity = metrics.get_current_identity(order_rows)
 
     core = metrics.get_core_metrics(normalized)
+    order_remarks = metrics.get_order_remarks(normalized)
     products = metrics.get_product_return_rates(normalized)
 
     call_stats_row = metrics.get_call_stats(normalized)
@@ -77,6 +78,7 @@ def get_customer_profile(phone: str, agent: dict = Depends(get_current_agent)):
     # so badges[0] is the priority pick with no separate logic needed.
     segment = badges[0]['label'] if badges else None
 
+    avg_delivery_days = metrics.get_avg_delivery_days(normalized)
     delivery_success_rate_pct = metrics.compute_overall_delivery_success_rate(delivery_rows)
     reliability_score = metrics.calculate_reliability_score(
         call_stats_row.get('ReachRatePct'),
@@ -84,7 +86,9 @@ def get_customer_profile(phone: str, agent: dict = Depends(get_current_agent)):
         core.get('CancelRatePct'),
     )
 
-    total_due_amount = sum((o['due_amount'] or 0) for o in orders)
+    order_frequency_category, avg_order_gap_days = metrics.derive_order_frequency(
+        core.get('InvoiceCount') or 0, core.get('FirstOrderDate'), core.get('LastOrderDate'),
+    )
 
     cached_summary = ai_summary.get_cached_summary(normalized)
 
@@ -97,21 +101,35 @@ def get_customer_profile(phone: str, agent: dict = Depends(get_current_agent)):
             [{'text': identity['address'], 'primary': True}]
             if identity['address'] else []
         ),
-        # segment/due_amount/reliability_score: CONFIRMED 2026-08-12 —
-        # see the computations above.
+        # segment/reliability_score: CONFIRMED 2026-08-12 — see the
+        # computations above. due_amount (customer-level aggregate) was
+        # removed 2026-09-01 — it summed due_amount across ALL orders
+        # regardless of status, so a cancelled order's stray due_amount
+        # data still counted toward it, misleadingly. Per-order due_amount
+        # (Order.due_amount, still real/accurate for a single invoice) is
+        # untouched.
         segment=segment,
-        due_amount=total_due_amount,
         reliability_score=reliability_score,
+        avg_delivery_days=avg_delivery_days,
+        order_frequency_category=order_frequency_category,
+        average_order_gap_days=avg_order_gap_days,
         tier=tier,
         badges=badges,
         metrics={
             'total_orders': core.get('InvoiceCount') or 0,
             'ltv': core.get('LifetimeValue') or 0,
             'aov': core.get('AOV') or 0,
-            'cancel_rate_pct': core.get('CancelRatePct') or 0,
-            'return_rate_pct': core.get('ReturnRatePct') or 0,
+            # Rounded here at the response boundary, not inside
+            # get_core_metrics() itself — derive_badges()'s At-Risk
+            # threshold check and calculate_reliability_score() both read
+            # `core`'s CancelRatePct/ReturnRatePct at full precision above;
+            # rounding at the source would let e.g. a real 29.96% round up
+            # to 30.0 and wrongly cross the >=30 At-Risk cutoff.
+            'cancel_rate_pct': round(core.get('CancelRatePct') or 0, 1),
+            'return_rate_pct': round(core.get('ReturnRatePct') or 0, 1),
             'recency_days': recency_days,
             'last_order_date': core.get('LastOrderDate'),
+            'first_order_date': core.get('FirstOrderDate'),
         },
         orders=[
             {
@@ -131,6 +149,10 @@ def get_customer_profile(phone: str, agent: dict = Depends(get_current_agent)):
                 'items': o['items'],
             }
             for o in orders
+        ],
+        order_remarks=[
+            {'invoice': r['invoice'], 'date': r['date'], 'note': r['note']}
+            for r in order_remarks
         ],
         products=[
             {
@@ -177,10 +199,20 @@ def get_customer_profile(phone: str, agent: dict = Depends(get_current_agent)):
             {'label': r['Label'], 'pct': r['Pct']} for r in pickup_rows
         ],
         channel_breakdown=[
-            {'label': r['Label'], 'pct': r['Pct']} for r in channel_rows
+            {
+                'label': r['Label'], 'pct': r['Pct'],
+                'total_sales': r['TotalSales'], 'total_invoices': r['TotalInvoices'],
+                'total_qty': r['TotalQty'], 'total_returns': r['TotalReturns'],
+            }
+            for r in channel_rows
         ],
         payment_breakdown=[
-            {'label': r['Label'], 'pct': r['Pct']} for r in payment_rows
+            {
+                'label': r['Label'], 'pct': r['Pct'],
+                'total_sales': r['TotalSales'], 'total_invoices': r['TotalInvoices'],
+                'total_qty': r['TotalQty'], 'total_returns': r['TotalReturns'],
+            }
+            for r in payment_rows
         ],
         ai_summary={
             'short_bn': (cached_summary or {}).get('summary_short_bn'),

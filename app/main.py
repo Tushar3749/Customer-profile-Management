@@ -11,7 +11,7 @@ Responsibility:
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import calls, customer, search
+from app.routers import auth, calls, customer, search, users
 
 app = FastAPI(title="GhorerBazar Customer 360 Dashboard API")
 
@@ -31,3 +31,5 @@ app.add_middleware(
 app.include_router(customer.router, prefix="/api")
 app.include_router(calls.router, prefix="/api")
 app.include_router(search.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")
+app.include_router(users.router, prefix="/api")
