@@ -25,6 +25,9 @@ uvicorn_stderr.log
 .idea/
 .claude/
 
+# Vercel local cache
+.vercel/
+
 # OS
 .DS_Store
 Thumbs.db
