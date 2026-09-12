@@ -1,6 +1,30 @@
+# Environment / secrets
 .env
-venv/
+*.env
+!.env.example
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Node (in case any tooling is added later)
+node_modules/
+
+# Logs
+*.log
+uvicorn_stdout.log
+uvicorn_stderr.log
+
+# Editor / local tool config
+.vscode/
+.idea/
 .claude/
+
+# OS
+.DS_Store
+Thumbs.db

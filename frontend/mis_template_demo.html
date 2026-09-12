@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GhorerBazar MIS — Template Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* ---- Base palette (4-6 named colors, everything else derives) ---- */
+    --ink-900:#14181F;       /* primary text */
+    --ink-600:#5B6472;       /* secondary text */
+    --ink-400:#9AA2AF;       /* muted / placeholder */
+    --line:#E7E9EE;          /* hairline borders */
+    --line-soft:#F1F2F5;     /* very light divider */
+    --surface:#FFFFFF;       /* card surface */
+    --canvas:#F6F7F9;        /* page background */
+    --brand:#EA580C;         /* GhorerBazar orange — accent-600 */
+    --brand-050:#FFF4ED;
+    --brand-100:#FFE6D5;
+    --brand-600:#EA580C;
+    --brand-700:#C2410C;
+    --success:#15803D;
+    --success-bg:#F0FDF4;
+    --danger:#DC2626;
+    --danger-bg:#FEF2F2;
+    --warning:#B45309;
+    --warning-bg:#FFFBEB;
+    --sidebar-w:236px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'Hind Siliguri','Inter',system-ui,-apple-system,sans-serif;
+    background:var(--canvas);
+    color:var(--ink-900);
+    font-size:14px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none}
+  button{font-family:inherit;cursor:pointer}
+
+  /* ================= Sidebar ================= */
+  .sidebar{
+    position:fixed;inset:0 auto 0 0;width:var(--sidebar-w);height:100vh;
+    background:var(--surface);
+    border-right:1px solid var(--line);
+    display:flex;flex-direction:column;
+    z-index:40;
+  }
+  .sidebar-brand{
+    display:flex;align-items:center;gap:10px;
+    padding:20px 20px 18px;
+    border-bottom:1px solid var(--line);
+  }
+  .brand-mark{
+    width:30px;height:30px;border-radius:7px;background:var(--brand);
+    color:#fff;display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:12.5px;letter-spacing:.01em;flex:none;
+    font-family:'Inter',sans-serif;
+  }
+  .brand-text{display:flex;flex-direction:column;line-height:1.25}
+  .brand-text strong{font-size:14.5px;font-weight:700;color:var(--ink-900)}
+  .brand-text span{font-size:11px;color:var(--ink-400);font-weight:500}
+
+  .nav-scroll{flex:1;overflow-y:auto;padding:14px 12px}
+  .nav-group{margin-bottom:18px}
+  .nav-group-label{
+    font-size:11px;font-weight:600;color:var(--ink-400);
+    text-transform:uppercase;letter-spacing:.05em;
+    padding:0 10px 8px;
+  }
+  .nav-item{
+    display:flex;align-items:center;gap:10px;
+    width:100%;text-align:left;
+    padding:8px 10px;border-radius:7px;
+    font-size:13.5px;font-weight:500;color:var(--ink-600);
+    border:none;background:transparent;
+    transition:background-color .12s ease,color .12s ease;
+  }
+  .nav-item:hover{background:var(--line-soft);color:var(--ink-900)}
+  .nav-item.active{background:var(--brand-050);color:var(--brand-700);font-weight:600}
+  .nav-item .icon{width:17px;height:17px;flex:none;opacity:.85}
+  .nav-item .chev{margin-left:auto;width:14px;height:14px;opacity:.5;transition:transform .15s ease}
+  .nav-item.expanded .chev{transform:rotate(180deg)}
+
+  .nav-sub{
+    max-height:0;overflow:hidden;transition:max-height .18s ease;
+    padding-left:29px;
+  }
+  .nav-sub.open{max-height:200px}
+  .nav-sub-item{
+    display:block;width:100%;text-align:left;
+    padding:7px 10px;margin-top:2px;border-radius:6px;
+    font-size:13px;font-weight:500;color:var(--ink-600);
+    border:none;background:transparent;position:relative;
+    transition:background-color .12s ease,color .12s ease;
+  }
+  .nav-sub-item::before{
+    content:'';position:absolute;left:-13px;top:50%;width:8px;height:1px;background:var(--line);
+  }
+  .nav-sub-item:hover{background:var(--line-soft);color:var(--ink-900)}
+  .nav-sub-item.active{background:var(--brand-600);color:#fff;font-weight:600}
+
+  .sidebar-foot{
+    padding:12px;border-top:1px solid var(--line);
+  }
+  .role-chip{
+    display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:8px;
+    background:var(--line-soft);
+  }
+  .role-avatar{
+    width:28px;height:28px;border-radius:50%;background:var(--brand-100);color:var(--brand-700);
+    display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;flex:none;
+  }
+  .role-meta{line-height:1.25;min-width:0}
+  .role-meta strong{display:block;font-size:12.5px;font-weight:600;color:var(--ink-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .role-meta span{font-size:11px;color:var(--ink-400)}
+
+  /* ================= Header ================= */
+  .topbar{
+    margin-left:var(--sidebar-w);
+    height:56px;
+    background:var(--surface);
+    border-bottom:1px solid var(--line);
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 24px;
+    position:sticky;top:0;z-index:30;
+  }
+  .crumbs{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-400);font-weight:500}
+  .crumbs b{color:var(--ink-900);font-weight:600}
+  .topbar-right{display:flex;align-items:center;gap:14px}
+  .lang-toggle{display:flex;background:var(--line-soft);border-radius:7px;padding:3px;gap:2px}
+  .lang-toggle button{padding:5px 10px;border-radius:5px;border:none;background:transparent;font-size:12px;font-weight:600;color:var(--ink-400)}
+  .lang-toggle button.active{background:var(--surface);color:var(--ink-900);box-shadow:0 1px 2px rgba(20,24,31,.08)}
+  .icon-btn{
+    width:32px;height:32px;border-radius:7px;border:1px solid var(--line);background:var(--surface);
+    display:flex;align-items:center;justify-content:center;color:var(--ink-600);
+  }
+  .icon-btn:hover{background:var(--line-soft)}
+
+  /* ================= Main ================= */
+  .main{margin-left:var(--sidebar-w);padding:24px;max-width:1360px}
+  .page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:12px;flex-wrap:wrap}
+  .page-title{font-size:19px;font-weight:700;color:var(--ink-900);display:flex;align-items:center;gap:9px}
+  .page-title .icon{width:19px;height:19px;color:var(--brand)}
+  .page-sub{font-size:12.5px;color:var(--ink-400);margin-top:2px;font-weight:500}
+
+  .search-shell{
+    display:flex;align-items:center;gap:8px;
+    background:var(--surface);border:1px solid var(--line);border-radius:9px;
+    padding:8px 12px;max-width:420px;
+  }
+  .search-shell svg{color:var(--ink-400);flex:none}
+  .search-shell input{border:none;outline:none;font-size:13.5px;width:100%;background:transparent;color:var(--ink-900)}
+  .search-shell input::placeholder{color:var(--ink-400)}
+  .btn-primary{
+    background:var(--brand-600);color:#fff;border:none;border-radius:8px;
+    padding:8px 16px;font-size:13px;font-weight:600;
+  }
+  .btn-primary:hover{background:var(--brand-700)}
+
+  /* ---- KPI cards ---- */
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+  .kpi-card{
+    background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;
+  }
+  .kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+  .kpi-label{font-size:11.5px;font-weight:600;color:var(--ink-400)}
+  .kpi-icon{width:16px;height:16px;color:var(--ink-400)}
+  .kpi-value{font-size:22px;font-weight:700;color:var(--ink-900);line-height:1.1}
+  .kpi-delta{font-size:11.5px;font-weight:600;margin-top:6px;display:flex;align-items:center;gap:3px}
+  .kpi-delta.up{color:var(--success)}
+  .kpi-delta.down{color:var(--danger)}
+
+  /* ---- Panel / card ---- */
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:16px}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid var(--line-soft)}
+  .panel-head h3{font-size:13.5px;font-weight:600;color:var(--ink-900)}
+  .panel-body{padding:18px}
+  .panel-cols{display:grid;grid-template-columns:1.3fr 1fr;gap:16px}
+
+  /* ---- Row list (orders) ---- */
+  .row-item{
+    display:flex;align-items:center;gap:12px;padding:12px 0;
+    border-bottom:1px solid var(--line-soft);
+  }
+  .row-item:last-child{border-bottom:none}
+  .row-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex:none}
+  .row-main{flex:1;min-width:0}
+  .row-title{font-size:13px;font-weight:600;color:var(--ink-900)}
+  .row-meta{font-size:11.5px;color:var(--ink-400);margin-top:1px}
+  .row-amount{font-size:13.5px;font-weight:700;color:var(--ink-900);white-space:nowrap}
+  .badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap}
+  .badge-success{background:var(--success-bg);color:var(--success)}
+  .badge-danger{background:var(--danger-bg);color:var(--danger)}
+  .badge-warning{background:var(--warning-bg);color:var(--warning)}
+
+  /* ---- Bar chart (css only) ---- */
+  .bar-row{margin-bottom:12px}
+  .bar-row:last-child{margin-bottom:0}
+  .bar-top{display:flex;justify-content:space-between;font-size:12px;font-weight:500;color:var(--ink-600);margin-bottom:5px}
+  .bar-top b{color:var(--ink-900);font-weight:700}
+  .bar-track{height:7px;background:var(--line-soft);border-radius:99px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:99px;background:var(--brand-600)}
+
+  /* ---- Identity card ---- */
+  .identity{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;padding:18px}
+  .identity-left{flex:1;min-width:240px}
+  .identity-name-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .identity-name{font-size:20px;font-weight:700;color:var(--ink-900)}
+  .identity-phone{font-size:12px;font-weight:500;color:var(--ink-400);background:var(--line-soft);padding:3px 8px;border-radius:6px;font-family:monospace}
+  .tier-badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--brand-600);color:#fff}
+  .identity-addr{font-size:12.5px;color:var(--ink-600);margin-top:6px;display:flex;align-items:center;gap:6px}
+  .identity-meta{display:flex;gap:16px;margin-top:10px;flex-wrap:wrap}
+  .identity-meta-item{font-size:12px;color:var(--ink-400)}
+  .identity-meta-item b{color:var(--ink-600);font-weight:600}
+  .identity-badges{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap}
+  .chip{font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:99px;display:flex;align-items:center;gap:5px}
+  .chip-brand{background:var(--brand-050);color:var(--brand-700);border:1px solid var(--brand-100)}
+  .chip-success{background:var(--success-bg);color:var(--success)}
+
+  .identity-right{display:flex;gap:10px;flex-wrap:wrap}
+  .stat-pill{
+    background:var(--canvas);border:1px solid var(--line);border-radius:10px;
+    padding:11px 16px;min-width:140px;display:flex;align-items:center;gap:10px;
+  }
+  .stat-pill-icon{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none}
+  .stat-pill-label{font-size:10.5px;font-weight:600;color:var(--ink-400);text-transform:none}
+  .stat-pill-value{font-size:15px;font-weight:700;color:var(--ink-900)}
+
+  .note-callout{
+    margin:0 18px 18px;padding:12px 14px;border-radius:9px;
+    background:linear-gradient(90deg,#F5F3FF,#FDF4FF);
+    border:1px solid #EDE9FE;
+    font-size:12.5px;color:var(--ink-600);display:flex;gap:9px;
+  }
+
+  svg{display:block}
+
+  @media(max-width:880px){
+    .sidebar{transform:translateX(-100%)}
+    .topbar,.main{margin-left:0}
+    .panel-cols{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-mark">GB</div>
+    <div class="brand-text">
+      <strong>GhorerBazar</strong>
+      <span>Internal MIS</span>
+    </div>
+  </div>
+
+  <nav class="nav-scroll">
+    <div class="nav-group">
+      <button class="nav-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
+        বিক্রয়
+      </button>
+      <button class="nav-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8V7l-3-4H6L3 7v1"/><path d="M3 8h18v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8z"/><path d="M10 12h4"/></svg>
+        ইনভেন্টরি
+      </button>
+      <button class="nav-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/></svg>
+        ফাইন্যান্স
+      </button>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">রিলেশনশিপ</div>
+      <button class="nav-item active expanded" id="crm-toggle">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        কাস্টমার (CRM)
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="nav-sub open" id="crm-sub">
+        <button class="nav-sub-item active">কাস্টমার ৩৬০°</button>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">প্রশাসন</div>
+      <button class="nav-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        ব্যবহারকারী ব্যবস্থাপনা
+      </button>
+    </div>
+  </nav>
+
+  <div class="sidebar-foot">
+    <div class="role-chip">
+      <div class="role-avatar">RH</div>
+      <div class="role-meta">
+        <strong>রাকিব হাসান</strong>
+        <span>Super Admin</span>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<header class="topbar">
+  <div class="crumbs">
+    <span>CRM</span>
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    <b>কাস্টমার ৩৬০°</b>
+  </div>
+  <div class="topbar-right">
+    <div class="lang-toggle">
+      <button class="active">বাং</button>
+      <button>EN</button>
+    </div>
+    <button class="icon-btn" title="Logout">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    </button>
+  </div>
+</header>
+
+<main class="main">
+
+  <div class="page-head">
+    <div>
+      <div class="page-title">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        অর্ডারসমূহ
+      </div>
+      <div class="page-sub">Zara Hussain · 8801799855505</div>
+    </div>
+    <div class="search-shell">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input placeholder="ফোন নম্বর দিয়ে খুঁজুন...">
+    </div>
+  </div>
+
+  <!-- Identity card -->
+  <div class="panel">
+    <div class="identity">
+      <div class="identity-left">
+        <div class="identity-name-row">
+          <span class="identity-name">Zara Hussain</span>
+          <span class="identity-phone">8801799855505</span>
+          <span class="tier-badge">গোল্ড</span>
+        </div>
+        <div class="identity-addr">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          181/A Middle Paikpara, Mirpur 1, Dhaka 1216
+        </div>
+        <div class="identity-meta">
+          <span class="identity-meta-item">গ্রাহক থেকে <b>জানুয়ারি ২০২৪</b></span>
+          <span class="identity-meta-item">উপযুক্ত সময় <b>বিকাল ৪–৭টা</b></span>
+          <span class="identity-meta-item">প্রিয় ক্যাটাগরি <b>মধু ও ঘি</b></span>
+        </div>
+        <div class="identity-badges">
+          <span class="chip chip-brand">★ ভিআইপি কাস্টমার</span>
+          <span class="chip chip-success">✓ নিয়মিত পরিশোধ</span>
+        </div>
+      </div>
+      <div class="identity-right">
+        <div class="stat-pill">
+          <div class="stat-pill-icon" style="background:var(--success-bg)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div><div class="stat-pill-label">রিলায়েবিলিটি</div><div class="stat-pill-value">৬৯/১০০</div></div>
+        </div>
+        <div class="stat-pill">
+          <div class="stat-pill-icon" style="background:var(--danger-bg)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+          </div>
+          <div><div class="stat-pill-label">বকেয়া পরিমাণ</div><div class="stat-pill-value">৳ ৪২,৭৯০</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="note-callout">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" style="flex:none"><path d="M12 2a7 7 0 0 0-4 12.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26A7 7 0 0 0 12 2Z"/><line x1="9" y1="21" x2="15" y2="21"/></svg>
+      নিয়মিত অর্ডার করেন, গড়ে মাসে ২–৩টি — সন্ধ্যায় কল করলে সাড়া দেওয়ার সম্ভাবনা বেশি।
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-top"><span class="kpi-label">মোট অর্ডার</span>
+        <svg class="kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/></svg>
+      </div>
+      <div class="kpi-value">২৮টি</div>
+      <div class="kpi-delta up">↑ ৫% গড়ের চেয়ে বেশি</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><span class="kpi-label">লাইফটাইম ভ্যালু</span>
+        <svg class="kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      </div>
+      <div class="kpi-value">৳ ১,৬৪,৫৪৫</div>
+      <div class="kpi-delta up">Top 5% কাস্টমার</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><span class="kpi-label">গড় অর্ডার মূল্য</span>
+        <svg class="kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/></svg>
+      </div>
+      <div class="kpi-value">৳ ৫,৪৮৫</div>
+      <div class="kpi-delta up">স্থিতিশীল</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><span class="kpi-label">বাতিলের হার</span>
+        <svg class="kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <div class="kpi-value">৩%</div>
+      <div class="kpi-delta down">গড়ের নিচে</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><span class="kpi-label">রিটার্ন হার</span>
+        <svg class="kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-9.36L1 10"/></svg>
+      </div>
+      <div class="kpi-value">২%</div>
+      <div class="kpi-delta up">নিয়ন্ত্রণে</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><span class="kpi-label">সর্বশেষ অর্ডার</span>
+        <svg class="kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      </div>
+      <div class="kpi-value">৩ দিন আগে</div>
+      <div class="kpi-delta up">৫ জুলাই, ২০২৬</div>
+    </div>
+  </div>
+
+  <!-- Orders + status distribution -->
+  <div class="panel-cols">
+    <div class="panel">
+      <div class="panel-head"><h3>সাম্প্রতিক অর্ডার</h3></div>
+      <div class="panel-body">
+        <div class="row-item">
+          <div class="row-icon" style="background:var(--success-bg)">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div class="row-main">
+            <div class="row-title">ইনভয়েস #GB-260705436590</div>
+            <div class="row-meta">৫ জুলাই, ২০২৬ · Cash On Delivery</div>
+          </div>
+          <span class="badge badge-success">ডেলিভার্ড</span>
+          <div class="row-amount">৳ ৪,৪২৫</div>
+        </div>
+        <div class="row-item">
+          <div class="row-icon" style="background:var(--warning-bg)">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+          </div>
+          <div class="row-main">
+            <div class="row-title">ইনভয়েস #GB-260615759700</div>
+            <div class="row-meta">১৫ জুন, ২০২৬ · bKash</div>
+          </div>
+          <span class="badge badge-warning">ইন-ট্রানজিট</span>
+          <div class="row-amount">৳ ৭,১৩০</div>
+        </div>
+        <div class="row-item">
+          <div class="row-icon" style="background:var(--danger-bg)">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          </div>
+          <div class="row-main">
+            <div class="row-title">ইনভয়েস #GB-260604692370</div>
+            <div class="row-meta">৪ জুন, ২০২৬ · Cash On Delivery</div>
+          </div>
+          <span class="badge badge-danger">বাতিল</span>
+          <div class="row-amount">৳ ৩,২৭৫</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>স্ট্যাটাস বিতরণ</h3></div>
+      <div class="panel-body">
+        <div class="bar-row">
+          <div class="bar-top"><span>ডেলিভার্ড</span><b>১৮টি · ৬৪%</b></div>
+          <div class="bar-track"><div class="bar-fill" style="width:64%;background:var(--success)"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-top"><span>ইন-ট্রানজিট</span><b>৬টি · ২১%</b></div>
+          <div class="bar-track"><div class="bar-fill" style="width:21%;background:var(--warning)"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-top"><span>বাতিল</span><b>৩টি · ১১%</b></div>
+          <div class="bar-track"><div class="bar-fill" style="width:11%;background:var(--danger)"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-top"><span>রিটার্ন</span><b>১টি · ৪%</b></div>
+          <div class="bar-track"><div class="bar-fill" style="width:4%;background:#7C3AED"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  document.getElementById('crm-toggle').addEventListener('click', () => {
+    document.getElementById('crm-toggle').classList.toggle('expanded');
+    document.getElementById('crm-sub').classList.toggle('open');
+  });
+</script>
+</body>
+</html>
