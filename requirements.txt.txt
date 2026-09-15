@@ -1,8 +1,0 @@
-fastapi
-uvicorn[standard]
-pyodbc
-python-dotenv
-pydantic-settings
-google-generativeai
-bcrypt
-msodbcsql17
