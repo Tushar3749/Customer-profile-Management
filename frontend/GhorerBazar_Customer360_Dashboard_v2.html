@@ -231,6 +231,13 @@ body input{font-family:inherit;font-size:14px!important}
 .row-meta{font-size:11.5px;color:var(--ink-400);margin-top:1px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 .row-amount{font-size:13.5px;font-weight:700;color:var(--ink-900);white-space:nowrap}
 
+/* Inline date chip — muted grey + small calendar glyph, so a date sitting
+   inside running text (an order remark's note, etc.) still reads as a
+   date at a glance instead of blending into the surrounding sentence.
+   See formatDateChip() in the script below. */
+.gb-date-chip{display:inline-flex;align-items:center;gap:4px;color:var(--ink-400);font-weight:700}
+.gb-date-chip i{width:11px;height:11px;flex:none}
+
 .badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap;display:inline-block}
 .badge-success{background:var(--success-bg);color:var(--success)}
 .badge-danger{background:var(--danger-bg);color:var(--danger)}
@@ -243,14 +250,28 @@ body input{font-family:inherit;font-size:14px!important}
 .bar-top b{color:var(--ink-900);font-weight:700}
 .bar-track{height:7px;background:var(--line-soft);border-radius:99px;overflow:hidden}
 .bar-fill{height:100%;border-radius:99px;background:var(--brand-600);width:0%;transition:width var(--dur-slow) cubic-bezier(.22,.9,.35,1)}
+/* Donut-chart arc segment (renderBreakdownDonut()) — grows in via the
+   existing data-grow-dasharray mechanism in triggerChartGrow(), same
+   easing/duration as every other chart's grow-in. */
+.donut-arc{transition:stroke-dasharray var(--dur-slow) cubic-bezier(.22,.9,.35,1)}
 
 .identity{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;padding:18px}
 .identity-left{flex:1;min-width:240px}
 .identity-name-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .identity-name{font-size:20px;font-weight:700;color:var(--ink-900)}
-.identity-phone{font-size:12px;font-weight:500;color:var(--ink-400);background:var(--line-soft);padding:3px 8px;border-radius:6px;font-family:monospace}
+/* CONTRAST FIX 2026-09-07 — was color:var(--ink-400) on background:
+   var(--line-soft), a light-grey-on-near-white combination that read as
+   faded next to the bold ink-900 name beside it. Now dark, bold text plus
+   a visible border so the chip itself reads as clearly bounded, not just
+   a faint tint. font-size bumped 12px -> 14px (user feedback: contrast/
+   weight/border were fine, the number itself just needed to read bigger). */
+.identity-phone{font-size:14px;font-weight:700;color:var(--ink-900);background:var(--line-soft);border:1px solid var(--line);padding:3px 8px;border-radius:6px;font-family:monospace}
 .tier-badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--brand-600);color:#fff}
-.identity-addr{font-size:12.5px;color:var(--ink-600);margin-top:6px;display:flex;align-items:center;gap:6px}
+/* CONTRAST FIX 2026-09-07 — was color:var(--ink-600) (muted secondary
+   text); brought up to ink-900 + semibold and a touch larger so the
+   address reads at the same visibility level as the name/phone next to
+   it instead of fading into the background. */
+.identity-addr{font-size:13px;font-weight:600;color:var(--ink-900);margin-top:6px;display:flex;align-items:center;gap:6px}
 .identity-meta{display:flex;gap:16px;margin-top:10px;flex-wrap:wrap}
 .identity-meta-item{font-size:12px;color:var(--ink-400)}
 .identity-meta-item b{color:var(--ink-600);font-weight:600}
@@ -538,10 +559,15 @@ a.chip,button.chip{cursor:pointer}
         <div>
           <label class="block text-body font-bold text-slate-700 mb-2" data-i18n="callStatusLabel">কলের স্ট্যাটাস</label>
           <div class="grid grid-cols-2 gap-2">
-            <button class="status-btn gb-btn gb-btn-outline border border-slate-200 text-body py-2 rounded-lg" data-i18n="statusInterested">Interested</button>
-            <button class="status-btn gb-btn gb-btn-outline border border-slate-200 text-body py-2 rounded-lg" data-i18n="statusNotInterested">Not Interested</button>
-            <button class="status-btn gb-btn gb-btn-outline border border-slate-200 text-body py-2 rounded-lg hover:border-slate-400" data-i18n="statusUnreachable">Unreachable</button>
-            <button class="status-btn gb-btn gb-btn-outline border border-slate-200 text-body py-2 rounded-lg" data-i18n="statusCallback">Callback Request</button>
+            <button class="status-btn gb-btn gb-btn-outline border border-slate-200 text-body py-2 rounded-lg" data-status-code="Interested" data-i18n="statusInterested">Interested</button>
+            <button class="status-btn gb-btn gb-btn-outline border border-slate-200 text-body py-2 rounded-lg" data-status-code="Not Interested" data-i18n="statusNotInterested">Not Interested</button>
+            <button class="status-btn gb-btn gb-btn-outline border border-slate-200 text-body py-2 rounded-lg hover:border-slate-400" data-status-code="Unreachable" data-i18n="statusUnreachable">Unreachable</button>
+            <!-- CONFIRMED 2026-09-07 — mapped to the real historical status
+                 'Follow Up' (dcm.agent_assignment_history.new_status has no
+                 'Callback Request' value anywhere; 'Follow Up' is the
+                 existing equivalent, 40k+ real rows). TODO: confirm with
+                 business this mapping is correct. -->
+            <button class="status-btn gb-btn gb-btn-outline border border-slate-200 text-body py-2 rounded-lg" data-status-code="Follow Up" data-i18n="statusCallback">Callback Request</button>
           </div>
         </div>
         <div>
@@ -550,12 +576,12 @@ a.chip,button.chip{cursor:pointer}
         </div>
         <div>
           <label class="block text-body font-bold text-slate-700 mb-1" data-i18n="followupLabel">পরবর্তী ফলো-আপ তারিখ</label>
-          <input type="date" class="w-full border border-slate-300 rounded-lg p-2 text-body text-slate-600 font-medium">
+          <input id="followup-date-input" type="date" class="w-full border border-slate-300 rounded-lg p-2 text-body text-slate-600 font-medium">
         </div>
       </div>
     </div>
-    <button onclick="saveAction()" class="gb-btn gb-btn-solid w-full py-3 rounded-lg text-card-title shadow-md" style="background:var(--success);color:#fff">
-      <i data-lucide="check-circle" class="w-4 h-4"></i> <span data-i18n="saveBtn">সংরক্ষণ করুন</span>
+    <button id="save-action-btn" onclick="saveAction()" class="gb-btn gb-btn-solid w-full py-3 rounded-lg text-card-title shadow-md" style="background:var(--success);color:#fff">
+      <i data-lucide="check-circle" class="w-4 h-4"></i> <span id="save-action-btn-label" data-i18n="saveBtn">সংরক্ষণ করুন</span>
     </button>
   </div>
 
@@ -629,6 +655,8 @@ const LABELS = {
     aiDetailsShow:'বিস্তারিত দেখুন', aiDetailsHide:'বিস্তারিত লুকান',
     searchNotFound:'এই নম্বরে কোনো গ্রাহক পাওয়া যায়নি — চেষ্টা করুন: 01712345678, 01898765432, 01911223344',
     copyToast:'কপি হয়েছে', saveToast:'রিমার্ক সফলভাবে সংরক্ষিত হয়েছে!',
+    saveSaving:'সংরক্ষণ হচ্ছে...', saveToastFail:'সংরক্ষণ ব্যর্থ হয়েছে, আবার চেষ্টা করুন।',
+    saveNoStatusToast:'একটি কলের স্ট্যাটাস নির্বাচন করুন।', saveNoCallIdToast:'এই কাস্টমারের কোনো কল রেকর্ড খুঁজে পাওয়া যায়নি।',
     filterAtRisk:'বাতিল/রিটার্ন অর্ডার দেখানো হচ্ছে',
     statusDelivered:'ডেলিভার্ড', statusCancelled:'বাতিল', statusReturned:'রিটার্ন', statusInTransit:'পথে আছে',
     totalAmountLabel:'মোট বিক্রয়', discountLabel:'ছাড়', reasonPrefix:'কারণ',
@@ -701,6 +729,8 @@ const LABELS = {
     aiDetailsShow:'Show details', aiDetailsHide:'Hide details',
     searchNotFound:'No customer found for this number — try: 01712345678, 01898765432, 01911223344',
     copyToast:'Copied', saveToast:'Remark saved successfully!',
+    saveSaving:'Saving...', saveToastFail:'Save failed, please try again.',
+    saveNoStatusToast:'Please select a call status.', saveNoCallIdToast:'No call record found for this customer.',
     filterAtRisk:'Showing cancelled/returned orders',
     statusDelivered:'Delivered', statusCancelled:'Cancelled', statusReturned:'Returned', statusInTransit:'In-Transit',
     totalAmountLabel:'Total Sale', discountLabel:'Discount', reasonPrefix:'Reason',
@@ -1007,6 +1037,7 @@ let expandedDeliveryInvoice = null;
 let ordersShowAll = false;
 let productsShowAll = false;
 let orderRemarksShowAll = false;
+let deliveryOrdersShowAll = false;
 
 /* ============ Rendering helpers ============ */
 function fmtMoney(n){ return '৳ ' + n.toLocaleString('en-US'); }
@@ -1066,7 +1097,7 @@ function renderIdentityHeader(c, L){
   // no data for it, instead of showing a label next to a blank value —
   // preferredContactTime/topCategory always have no source; tenure is
   // hidden too for a customer with literally no orders (c.tenure[L]==='').
-  document.getElementById('cust-tenure').textContent = c.tenure[L];
+  document.getElementById('cust-tenure').textContent = formatCallDate(c.tenure[L], L);
   document.getElementById('meta-tenure-wrap').classList.toggle('hidden', !c.tenure[L]);
   document.getElementById('cust-contact-time').textContent = c.preferredContactTime[L];
   document.getElementById('meta-contact-wrap').classList.toggle('hidden', !c.preferredContactTime[L]);
@@ -1078,7 +1109,14 @@ function renderIdentityHeader(c, L){
   document.getElementById('freq-subtitle').textContent = c.avgOrderGapDays != null
     ? Lb.orderFreqGapSubtitle.replace('{n}', c.avgOrderGapDays) : '';
   document.getElementById('freq-tip').setAttribute('data-tooltip', Lb.orderFreqTooltip);
-  document.getElementById('reliability-tip').setAttribute('data-tooltip', Lb.reliabilityTooltip);
+  // ADDED 2026-09-07 — backend-sourced context (what the score is actually
+  // measuring) + the limited-call-data note when this customer has zero
+  // agent-confirmed orders (metrics.get_agent_initiated_order_count()).
+  // Falls back to the old static explanation if the backend didn't send
+  // context text for some reason, so the tooltip is never empty.
+  const reliabilityTipText = [c.reliabilityContext[L], c.reliabilityLimitedDataNote[L]]
+    .filter(Boolean).join(' ') || Lb.reliabilityTooltip;
+  document.getElementById('reliability-tip').setAttribute('data-tooltip', reliabilityTipText);
 
   // Reliability gauge — score is null when the backend has no reach-rate/
   // delivery-rate/cancel-rate data yet (see calculate_reliability_score()'s
@@ -1176,7 +1214,7 @@ function renderOrdersMetrics(c, L){
   document.getElementById('m-cancel-rate').textContent = c.metrics.cancelRate + '%';
   document.getElementById('m-return-rate').textContent = c.metrics.returnRate + '%';
   document.getElementById('m-recency').textContent = c.metrics.recencyDays + (L==='bn' ? ' দিন' : ' days');
-  document.getElementById('m-last-order-date').textContent = c.metrics.lastOrderDate[L];
+  document.getElementById('m-last-order-date').textContent = formatCallDate(c.metrics.lastOrderDate[L], L);
 }
 
 // Entry point called by loadCustomerFromAPI()/toggleLanguage() — updates the
@@ -1258,7 +1296,7 @@ function openOrderDetailModal(invoice){
   document.getElementById('order-detail-title').textContent = `${Lb.invoiceLabel} #${o.invoice}`;
   document.getElementById('order-detail-content').innerHTML = `
     <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-body font-medium">
-      <div class="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2"><p class="text-slate-500">${Lb.orderDateFieldLabel}</p><p class="font-semibold text-slate-700 mt-0.5">${o.date[L]}</p></div>
+      <div class="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2"><p class="text-slate-500">${Lb.orderDateFieldLabel}</p><p class="font-semibold text-slate-700 mt-0.5">${formatCallDate(o.date[L], L)}</p></div>
       <div class="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2"><p class="text-slate-500">${Lb.orderStatusFieldLabel}</p><p class="mt-0.5">${statusBadge}</p></div>
       <div class="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2"><p class="text-slate-500">${Lb.paymentMethodFieldLabel}</p><p class="font-semibold text-slate-700 mt-0.5">${o.method[L] || '—'}</p></div>
       <div class="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2"><p class="text-slate-500">${Lb.totalAmountLabel}</p><p class="font-semibold text-slate-700 mt-0.5">${fmtMoney(total)}</p></div>
@@ -1319,13 +1357,21 @@ function triggerChartGrow(root){
    breakdown and Payment breakdown, so all three flat lists share the same
    chart language as the Orders/Products charts instead of a separate
    static, no-animation, single-color bar style. */
+// colorHex accepts either a single color (existing callers — call-status
+// breakdown is intentionally one color throughout) or a palette array,
+// cycled per row like CHANNEL_PALETTE — added 2026-09-09 for the pickup
+// warehouse breakdown, which used to render every row in the same green
+// regardless of how many distinct warehouses there were.
 function renderBreakdownBars(items, L, colorHex, emptyText){
   if (!items || !items.length) return `<p class="text-body font-medium text-slate-500">${emptyText}</p>`;
-  return items.map(item => `
+  return items.map((item, i) => {
+    const color = Array.isArray(colorHex) ? colorHex[i % colorHex.length] : colorHex;
+    return `
     <div class="bar-row">
       <div class="bar-top"><span>${item.label}</span><b>${item.pct}%</b></div>
-      <div class="bar-track" title="${item.detail}"><div class="bar-fill" style="background:${colorHex}" data-grow-width="${item.pct}%"></div></div>
-    </div>`).join('');
+      <div class="bar-track" title="${item.detail}"><div class="bar-fill" style="background:${color}" data-grow-width="${item.pct}%"></div></div>
+    </div>`;
+  }).join('');
 }
 
 /* ---- Orders: monthly trend bar chart + status distribution donut ---- */
@@ -1410,6 +1456,13 @@ function renderOrderStatusDonut(L, c, stats){
 }
 
 const LIST_PREVIEW_LIMIT = 5;
+// Delivery tab's per-order timeline list — a SEPARATE pair from
+// LIST_PREVIEW_LIMIT above (that one expands to the customer's full order
+// count; this section deliberately caps at 20 even when there are more,
+// since the timeline stepper per order is heavier to render than a plain
+// order-list row).
+const DELIVERY_PREVIEW_LIMIT = 5;
+const DELIVERY_EXPAND_LIMIT = 20;
 
 function toggleOrdersShowAll(){
   ordersShowAll = !ordersShowAll;
@@ -1477,7 +1530,7 @@ function renderOrders(c, L){
         </div>
         <div class="row-main">
           <div class="row-title">${Lb.invoiceLabel} #${o.invoice}</div>
-          <div class="row-meta"><i data-lucide="calendar" class="w-3 h-3"></i>${o.date[L]}</div>
+          <div class="row-meta"><i data-lucide="calendar" class="w-3 h-3"></i>${formatCallDate(o.date[L], L)}</div>
         </div>
         <span class="${st.cls}">${statusLabel}</span>
         <div class="row-amount">${fmtMoney(total)}</div>
@@ -1530,10 +1583,16 @@ function renderOrderRemarks(c, L){
 
   const displayed = orderRemarksShowAll ? remarks : remarks.slice(0, ORDER_REMARKS_PREVIEW_LIMIT);
   list.innerHTML = displayed.map(r => {
-    const dateText = formatCallDate(r.dateRaw, L);
+    // Date-format-consistency audit (2026-09-07) — this line used to be a
+    // bold ink-900 date PREFIX to the note ("2026-08-30: <note text>"),
+    // so the raw ISO date read as part of the sentence, not a separate
+    // date. formatDateChip() gives it its own muted+icon treatment; the
+    // note text now follows on its own line instead of right after a colon.
+    const dateChip = formatDateChip(r.dateRaw, L);
     return `
     <p class="text-card-title font-medium" style="color:var(--ink-600);background:var(--canvas);border:1px solid var(--line);border-radius:10px;padding:14px">
-      <span class="font-bold" style="color:var(--ink-900)">${dateText}:</span> ${r.note}
+      ${dateChip}
+      <span class="block mt-1" style="color:var(--ink-900)">${r.note}</span>
       <span class="block text-micro mt-1" style="color:var(--ink-400)">${Lb.invoiceLabel} #${r.invoice}</span>
     </p>`;
   }).join('');
@@ -1861,7 +1920,7 @@ function renderDeliveryTimeline(order, L){
             <i data-lucide="${done ? 'check' : s.icon}" class="w-4 h-4" style="color:${done ? '#fff' : '#94a3b8'}"></i>
           </div>
           <span class="text-micro font-semibold text-center" style="color:${done ? '#334155' : '#94a3b8'}">${s.label}</span>
-          <span class="text-micro text-slate-400 text-center">${t[s.key] || '—'}</span>
+          <span class="text-micro text-slate-400 text-center">${t[s.key] ? formatCallDate(t[s.key], L) : '—'}</span>
         </div>
         ${i < steps.length - 1 ? `<div class="h-0.5 flex-1 mx-1 mt-4" style="background:${i < lastDone ? CHART_COLORS.positive : '#e2e8f0'}"></div>` : ''}
       </div>`;
@@ -1878,8 +1937,39 @@ function deliveryStatusMismatch(order){
   return dps === 'delivered' && order.status !== 'delivered';
 }
 
+// ADDED 2026-09-08 — the order this customer's "latest tracking number"
+// card shows: newest-by-date order that actually HAS a delivery_id, not
+// simply the newest order (a newest order with no tracking id yet would
+// make the card useless — the previous, still-tracked shipment is more
+// useful to read out on a call).
+function getLatestTrackingOrder(c){
+  const sorted = c.orders.slice().sort((a, b) =>
+    (rawDateKey(b.date.bn) || '').localeCompare(rawDateKey(a.date.bn) || ''));
+  return sorted.find(o => o.deliveryId) || null;
+}
+
 function renderDelivery(c, L){
   const Lb = LABELS[L];
+
+  const trackingOrder = getLatestTrackingOrder(c);
+  document.getElementById('delivery-tracking-card').innerHTML = trackingOrder ? `
+    <div class="panel" style="padding:16px;border-color:${CHART_COLORS.delivery}66">
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <div class="flex items-center gap-3">
+          <div class="stat-pill-icon" style="background:#EAFBF5;width:38px;height:38px;flex:none"><i data-lucide="truck" class="w-4 h-4" style="color:${CHART_COLORS.delivery}"></i></div>
+          <div>
+            <div class="text-micro font-semibold" style="color:var(--ink-400)">${L==='bn'?'সর্বশেষ ট্র্যাকিং নম্বর':'Latest Tracking Number'}</div>
+            <div class="text-subheading font-bold" style="font-family:monospace;color:var(--ink-900)">${trackingOrder.deliveryId}</div>
+            <div class="text-micro" style="color:var(--ink-400)">${Lb.invoiceLabel} #${trackingOrder.invoice} · ${formatCallDate(trackingOrder.date[L], L)}</div>
+          </div>
+        </div>
+        <button type="button" class="btn-outline-panel" onclick="copyText('${trackingOrder.deliveryId}')" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="copy" class="w-3.5 h-3.5"></i>${L==='bn'?'কপি করুন':'Copy'}</button>
+      </div>
+    </div>` : `
+    <div class="panel" style="padding:16px">
+      <p class="text-body font-medium" style="color:var(--ink-400)">${L==='bn'?'কোনো ট্র্যাকিং নম্বর পাওয়া যায়নি':'No tracking number available'}</p>
+    </div>`;
+
   document.getElementById('delivery-metric-strip').innerHTML =
     orderSummaryCard('check-circle', Lb.successRateLabel, c.delivery.successRate + '%', CHART_COLORS.delivery) +
     orderSummaryCard('truck', Lb.topCourierLabel, c.delivery.courier[L], CHART_COLORS.delivery) +
@@ -1889,7 +1979,31 @@ function renderDelivery(c, L){
       // Text tag alongside the existing ≥10% color threshold — color-only
       // signal is colorblind-unfriendly (2026-09-01 label audit).
       `${c.deliverySummary.damageRatePct}% <span style="font-size:11px;font-weight:600;color:${c.deliverySummary.damageRatePct >= 10 ? CHART_COLORS.negative : CHART_COLORS.positive}">(${c.deliverySummary.damageRatePct >= 10 ? Lb.damageHigh : Lb.damageNormal})</span>`,
-      c.deliverySummary.damageRatePct >= 10 ? CHART_COLORS.negative : CHART_COLORS.positive);
+      c.deliverySummary.damageRatePct >= 10 ? CHART_COLORS.negative : CHART_COLORS.positive) +
+    // ADDED 2026-09-08 — % of orders where the courier actually shipped
+    // later than the recorded shipping date (metrics.compute_shipping_delay_pct()).
+    // null (not 0) renders as "তথ্য নেই"/"N/A" — no order has both dates yet,
+    // that's not the same claim as "0% delayed".
+    orderSummaryCard('alarm-clock', L==='bn'?'শিপিং দেরির হার':'Shipping Delay Rate',
+      c.deliverySummary.delayPct != null ? c.deliverySummary.delayPct + '%' : (L==='bn'?'তথ্য নেই':'N/A'),
+      CHART_COLORS.delivery,
+      L==='bn'?'নির্ধারিত শিপিং তারিখের পরে আসলে কবে শিপমেন্ট হয়েছে তার ভিত্তিতে হিসাব করা':'Calculated from how often the actual ship date fell after the recorded shipping date');
+
+  // ADDED 2026-09-08 — delivery-specific complaints/notes, hidden entirely
+  // when this customer has none (same graceful-empty pattern as
+  // delivery-pickup-breakdown below).
+  document.getElementById('delivery-related-remarks').innerHTML = c.deliveryRelatedRemarks.length ? `
+    <section class="panel">
+      <div class="panel-head"><h3><i data-lucide="message-square" class="w-4 h-4" style="color:${CHART_COLORS.delivery}"></i> ${L==='bn'?'ডেলিভারি-সম্পর্কিত মন্তব্য':'Delivery-Related Remarks'}</h3></div>
+      <div class="panel-body space-y-2">
+        ${c.deliveryRelatedRemarks.map(r => `
+        <p class="text-card-title font-medium" style="color:var(--ink-600);background:var(--canvas);border:1px solid var(--line);border-radius:10px;padding:14px">
+          ${formatDateChip(r.dateRaw, L)}
+          <span class="block mt-1" style="color:var(--ink-900)">${r.note}</span>
+          <span class="block text-micro mt-1" style="color:var(--ink-400)">${Lb.invoiceLabel} #${r.invoice}</span>
+        </p>`).join('')}
+      </div>
+    </section>` : '';
 
   const chartsEl = document.getElementById('delivery-charts');
   const stats = computeOrderStats(c);
@@ -1911,16 +2025,40 @@ function renderDelivery(c, L){
   document.getElementById('delivery-pickup-breakdown').innerHTML = c.pickupBreakdown.length ? `
     <div class="panel" style="margin-top:8px">
       <div class="panel-head"><h3>🏭 ${L==='bn'?'পিকআপ ওয়্যারহাউজ':'Pickup Warehouse'}</h3></div>
-      <div class="panel-body">${renderBreakdownBars(c.pickupBreakdown.map(p => ({label: p.label[L], pct: p.pct, detail: p.pct+'%'})), L, CHART_COLORS.delivery, Lb.patternNoData)}</div>
+      <div class="panel-body">${renderBreakdownBars(c.pickupBreakdown.map(p => ({label: p.label[L], pct: p.pct, detail: p.pct+'%'})), L, CHANNEL_PALETTE, Lb.patternNoData)}</div>
     </div>` : '';
   triggerChartGrow(document.getElementById('delivery-pickup-breakdown'));
 
+  // ADDED 2026-09-08 — aggregate customer-satisfaction-risk flag next to
+  // the section header (metrics.has_partial_delivery()); the per-order
+  // badge below flags which SPECIFIC order it was.
+  document.getElementById('delivery-partial-flag').innerHTML = c.deliverySummary.hasPartialDelivery
+    ? `<span class="chip chip-danger"><i data-lucide="alert-triangle" class="w-3 h-3"></i>${L==='bn'?'আংশিক ডেলিভারির ইতিহাস আছে':'Has partial-delivery history'}</span>`
+    : '';
+
+  // ADDED 2026-09-08 — "5 default, 20 on expand" pagination, a SEPARATE
+  // constant pair from LIST_PREVIEW_LIMIT (see DELIVERY_PREVIEW_LIMIT/
+  // DELIVERY_EXPAND_LIMIT above) since this section deliberately caps at
+  // 20 rather than expanding to the customer's full order count — each
+  // row can expand into a full timeline stepper, heavier than a plain
+  // order-list row. Sorted newest-first same as getLatestTrackingOrder().
+  const sortedDeliveryOrders = c.orders.slice().sort((a, b) =>
+    (rawDateKey(b.date.bn) || '').localeCompare(rawDateKey(a.date.bn) || ''));
+  const deliveryDisplayed = sortedDeliveryOrders.slice(
+    0, deliveryOrdersShowAll ? DELIVERY_EXPAND_LIMIT : DELIVERY_PREVIEW_LIMIT);
+
   const ordersListEl = document.getElementById('delivery-orders-list');
-  ordersListEl.innerHTML = c.orders.map(o => {
+  ordersListEl.innerHTML = deliveryDisplayed.map(o => {
     const st = STATUS_STYLE[o.status] || STATUS_STYLE_OTHER;
     const statusLabel = st.key ? Lb[st.key] : (o.status || (L==='bn' ? 'অজানা' : 'Unknown'));
     const isOpen = expandedDeliveryInvoice === o.invoice;
     const mismatch = deliveryStatusMismatch(o);
+    // ADDED 2026-09-08 — a partial delivery gets its own warning badge
+    // instead of the neutral courier-status chip every other status gets.
+    const isPartial = (o.deliveryPartnerStatus || '').toLowerCase() === 'partial_delivered';
+    const courierChip = !o.deliveryPartnerStatus ? '' : isPartial
+      ? `<span class="text-micro font-semibold px-2.5 py-1 rounded-full badge-warning" style="display:inline-flex;align-items:center;gap:4px"><i data-lucide="alert-triangle" class="w-3 h-3"></i>${L==='bn'?'আংশিক ডেলিভারি হয়েছিল':'Partial delivery occurred'}</span>`
+      : `<span class="text-micro font-semibold px-2.5 py-1 rounded-full" style="border:1px solid var(--line);color:var(--ink-600);background:var(--canvas)">${L==='bn'?'কুরিয়ার':'Courier'}: ${o.deliveryPartnerStatus}</span>`;
     return `
     <div class="panel" style="margin-bottom:10px">
       <button onclick="toggleDeliveryOrder('${o.invoice}')" class="w-full text-left" style="padding:14px;border:none;background:none;cursor:pointer;font-family:inherit">
@@ -1930,7 +2068,7 @@ function renderDelivery(c, L){
         </div>
         <div class="flex items-center gap-1.5 flex-wrap mt-2">
           <span class="${st.cls}">${statusLabel}</span>
-          ${o.deliveryPartnerStatus ? `<span class="text-micro font-semibold px-2.5 py-1 rounded-full" style="border:1px solid var(--line);color:var(--ink-600);background:var(--canvas)">${L==='bn'?'কুরিয়ার':'Courier'}: ${o.deliveryPartnerStatus}</span>` : ''}
+          ${courierChip}
           ${o.pickupLocation ? `<span class="chip" style="background:#EAFBF5;color:${CHART_COLORS.delivery}"><i data-lucide="map-pin" class="w-3 h-3"></i> ${o.pickupLocation}</span>` : ''}
         </div>
         ${mismatch ? `
@@ -1945,6 +2083,16 @@ function renderDelivery(c, L){
       </div>` : ''}
     </div>`;
   }).join('');
+
+  const deliveryShowMoreBtn = document.getElementById('delivery-orders-show-more-btn');
+  if (sortedDeliveryOrders.length > DELIVERY_PREVIEW_LIMIT) {
+    deliveryShowMoreBtn.classList.remove('hidden');
+    deliveryShowMoreBtn.textContent = deliveryOrdersShowAll
+      ? Lb.showLess
+      : Lb.showMore.replace('{total}', sortedDeliveryOrders.length);
+  } else {
+    deliveryShowMoreBtn.classList.add('hidden');
+  }
 
   const damageNote = c.deliverySummary.totalQty > 0
     ? (L==='bn'
@@ -1963,27 +2111,72 @@ function toggleDeliveryOrder(invoice){
   lucide.createIcons();
 }
 
+function toggleDeliveryOrdersShowAll(){
+  deliveryOrdersShowAll = !deliveryOrdersShowAll;
+  renderDelivery(CUSTOMERS[currentCustomerKey], currentLang);
+  lucide.createIcons();
+}
+
 /* ---- Channel & Payment: donut + per-category detail cards ----
    channelBreakdown/paymentBreakdown items now carry totalSales/
    totalInvoices/totalQty/totalReturns alongside pct (see
    mapApiResponseToCustomer) — cycled across a fixed palette since the
    normalized category count varies per customer (payment maxes out
-   around 6 buckets, channel around 9). */
-const CHANNEL_PALETTE = [CHART_COLORS.neutral, CHART_COLORS.products, CHART_COLORS.positive, CHART_COLORS.warning, CHART_COLORS.call, CHART_COLORS.delivery, CHART_COLORS.negative];
+   around 6 buckets, channel around 9).
 
-// Was an SVG donut — now a .bar-row list (name kept unchanged, still
-// called twice from renderChannel() for channel and payment breakdowns).
+   FIXED 2026-09-08 — the old palette (CHART_COLORS.neutral/products/...)
+   put two similar orange/rust shades (#EA580C, #D85A30) at adjacent
+   indices 0/1, so a customer with exactly those two top categories (real
+   case: "Cash On Delivery" + "অজানা") got two near-identical-looking
+   slices. Replaced with 7 colors picked to be pairwise distinct across
+   the hue wheel (orange/blue/green/purple/teal/amber/pink-red), in an
+   order where no two ADJACENT entries share a hue family — this array is
+   shared with renderBreakdownDetailCards() below too, so its dot/bar
+   colors get the same fix. */
+const CHANNEL_PALETTE = ['#EA580C', '#378ADD', '#639922', '#7C3AED', '#1D9E75', '#EF9F27', '#E24B4A'];
+
+// REWRITTEN 2026-09-08 — this was a bar-row list despite its name (a
+// stale leftover, never actually a donut). Channel/Payment's own summary
+// section is the only caller (renderChannel()) — the detail-card list
+// below it (renderBreakdownDetailCards()) is untouched and still uses its
+// own inline bar-track. Real SVG ring, same stroke-dasharray/-dashoffset
+// technique already used for the identity card's reliability gauge
+// (renderIdentityHeader()'s #reliability-ring), just multi-segment: each
+// item gets one arc, placed end-to-end around the circle starting at 12
+// o'clock (rotate -90). Grows in via the existing (previously unused)
+// data-grow-dasharray path in triggerChartGrow().
 function renderBreakdownDonut(items, L, title, icon, palette){
   const head = `<div class="panel-head"><h3>${icon} ${title}</h3></div>`;
   if (!items || !items.length) {
     return `<div class="panel">${head}<div class="panel-body"><p class="text-body text-slate-500 py-6 text-center font-medium">${LABELS[L].patternNoData}</p></div></div>`;
   }
-  const rows = items.map((it, i) => `
-    <div class="bar-row">
-      <div class="bar-top"><span>${it.label}</span><b>${it.pct}%</b></div>
-      <div class="bar-track"><div class="bar-fill" style="background:${palette[i % palette.length]}" data-grow-width="${it.pct}%"></div></div>
+  // SIZE FIX 2026-09-08 — bumped from a 120px box (R=45/SW=18) to 150px
+  // so the chart reads as prominent, not a small side detail.
+  const R = 55, C = 75, SW = 20;
+  const circumference = 2 * Math.PI * R;
+  let cumulativePct = 0;
+  const arcs = items.map((it, i) => {
+    const segLen = (it.pct / 100) * circumference;
+    const offset = -(cumulativePct / 100) * circumference;
+    cumulativePct += it.pct;
+    return `<circle class="donut-arc" cx="${C}" cy="${C}" r="${R}" fill="none" stroke="${palette[i % palette.length]}" stroke-width="${SW}"
+      stroke-dasharray="0 ${circumference.toFixed(2)}" data-grow-dasharray="${segLen.toFixed(2)} ${(circumference - segLen).toFixed(2)}"
+      stroke-dashoffset="${offset.toFixed(2)}" transform="rotate(-90 ${C} ${C})"></circle>`;
+  }).join('');
+  const legend = items.map((it, i) => `
+    <div class="flex items-center justify-between gap-2" style="font-size:12.5px">
+      <span class="flex items-center gap-2 min-w-0"><span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${palette[i % palette.length]}"></span><span class="truncate" style="color:var(--ink-600)">${it.label}</span></span>
+      <b class="shrink-0" style="color:var(--ink-900)">${it.pct}%</b>
     </div>`).join('');
-  return `<div class="panel">${head}<div class="panel-body">${rows}</div></div>`;
+  return `<div class="panel">${head}
+    <div class="panel-body flex items-center gap-5 flex-wrap">
+      <svg width="${C * 2}" height="${C * 2}" viewBox="0 0 ${C * 2} ${C * 2}" class="shrink-0">
+        <circle cx="${C}" cy="${C}" r="${R}" fill="none" stroke="var(--line-soft)" stroke-width="${SW}"></circle>
+        ${arcs}
+      </svg>
+      <div class="flex-1 space-y-1.5" style="min-width:150px">${legend}</div>
+    </div>
+  </div>`;
 }
 
 function renderBreakdownDetailCards(items, L, palette){
@@ -2141,7 +2334,7 @@ function buildHeatmap(elementId, type, c){
     dateNum.textContent = d.getDate();
     cell.appendChild(dateNum);
 
-    const dateStr = d.toLocaleDateString(L==='bn' ? 'bn-BD' : 'en-US', {day:'numeric', month:'short', year:'numeric'});
+    const dateStr = formatCallDate(d, L);
     const dayLabel = weekdayName(d, L);
     cell.setAttribute('aria-label', `${dateStr} (${dayLabel})`);
     cell.onclick = () => openDayDrawer(dateStr, type, count, negative, stats);
@@ -2443,6 +2636,12 @@ const PAGE_SKELETONS = {
     return `
     <div class="space-y-4">
       <h1 class="text-heading font-bold flex items-center gap-2" style="color:var(--ink-900)"><i data-lucide="truck" class="w-5 h-5" style="color:${CHART_COLORS.delivery}"></i>${Lb.tabDelivery}</h1>
+
+      <!-- ADDED 2026-09-08 — latest tracking number, prominent and copyable,
+           so an agent reading a customer out a tracking ID on a live call
+           doesn't have to open an order card to find it. -->
+      <div id="delivery-tracking-card"></div>
+
       <div id="delivery-metric-strip" class="kpi-grid"></div>
       <div id="delivery-charts" class="panel-cols"></div>
 
@@ -2453,10 +2652,21 @@ const PAGE_SKELETONS = {
         </div>
       </section>
 
+      <!-- ADDED 2026-09-08 — delivery-specific complaints/notes (courier
+           behavior, call-before-delivery requests, address/timing), a
+           filtered view of the same remarks the Orders tab shows. Hidden
+           entirely (empty innerHTML) when this customer has none, same
+           graceful-empty pattern as delivery-pickup-breakdown above. -->
+      <div id="delivery-related-remarks"></div>
+
       <section class="panel">
         <div class="panel-body space-y-3">
-          <p class="font-bold text-card-title flex items-center gap-2" style="color:var(--ink-900)">📦 ${L==='bn'?'অর্ডার-ভিত্তিক ডেলিভারি বিস্তারিত':'Per-Order Delivery Detail'}</p>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <p class="font-bold text-card-title flex items-center gap-2" style="color:var(--ink-900)">📦 ${L==='bn'?'অর্ডার-ভিত্তিক ডেলিভারি বিস্তারিত':'Per-Order Delivery Detail'}</p>
+            <span id="delivery-partial-flag"></span>
+          </div>
           <div id="delivery-orders-list"></div>
+          <button id="delivery-orders-show-more-btn" onclick="toggleDeliveryOrdersShowAll()" class="hidden text-body font-bold hover:underline" style="color:${CHART_COLORS.delivery}"></button>
         </div>
       </section>
 
@@ -2487,6 +2697,7 @@ function showPage(pageName, filter){
   ordersShowAll = false;
   productsShowAll = false;
   orderRemarksShowAll = false;
+  deliveryOrdersShowAll = false;
 
   document.querySelectorAll('.gb-left-item').forEach(el => el.classList.toggle('active', el.dataset.sideTab === pageName));
   document.getElementById('page-container').innerHTML = PAGE_SKELETONS[pageName]();
@@ -2909,18 +3120,40 @@ function translateStatus(status, L){
 const BN_DIGITS = ['০','১','২','৩','৪','৫','৬','৭','৮','৯'];
 function toBnDigits(n){ return String(n).replace(/[0-9]/g, d => BN_DIGITS[+d]); }
 const BN_MONTHS = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
-const EN_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-// Formats the raw ISO created_at from agent_assignment_history into a
-// human-readable date (no time) for the Call History sentence — e.g.
-// "৩১ জুলাই, ২০২৬" (bn) / "Jul 31, 2026" (en).
-function formatCallDate(isoStr, L){
-  if (!isoStr) return '';
-  const d = new Date(isoStr);
-  if (isNaN(d.getTime())) return isoStr;
+const EN_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+// SHARED DATE FORMATTER 2026-09-07 — the one function every date shown to
+// an agent must go through, so the app has exactly one visible date
+// format instead of raw ISO strings leaking through in some places and
+// ad-hoc toLocaleDateString() calls in others. Accepts either a raw ISO
+// string/date (as sent by the backend, e.g. "2026-08-30" or
+// "2026-08-30T10:30:00") or an already-constructed Date object (the
+// heatmap builds one per grid cell rather than an ISO string) — both
+// render as "৩০ আগস্ট, ২০২৬" (bn) / "30 August 2026" (en). An
+// unparseable value (e.g. an already-localized fallback string like
+// "তথ্য নেই"/"N/A") is returned unchanged rather than shown as
+// "Invalid Date".
+function formatCallDate(rawDate, L){
+  if (!rawDate) return '';
+  const d = rawDate instanceof Date ? rawDate : new Date(rawDate);
+  if (isNaN(d.getTime())) return String(rawDate);
   const day = d.getDate(), month = d.getMonth(), year = d.getFullYear();
   return L === 'bn'
     ? `${toBnDigits(day)} ${BN_MONTHS[month]}, ${toBnDigits(year)}`
-    : `${EN_MONTHS[month]} ${day}, ${year}`;
+    : `${day} ${EN_MONTHS[month]} ${year}`;
+}
+// Wraps formatCallDate() output in a small muted-grey + calendar-icon chip
+// for spots where a date sits inline in running text (e.g. an order
+// remark's note) and would otherwise blend into it — see the 2026-09-07
+// date-format-consistency audit. Plain formatCallDate() alone is enough
+// wherever the date already has its own label/box (KPI cards, the
+// timeline stepper, the "অর্ডারের তারিখ" field) — this is only for the
+// mixed-into-a-sentence case. Caller must re-run lucide.createIcons()
+// after inserting the returned markup, same as every other dynamic icon
+// in this file.
+function formatDateChip(rawDate, L){
+  const text = formatCallDate(rawDate, L);
+  if (!text) return '';
+  return `<span class="gb-date-chip"><i data-lucide="calendar" class="w-3 h-3"></i>${text}</span>`;
 }
 
 // delivery is a per-courier breakdown (spec query 5.5); the prototype's
@@ -2952,6 +3185,11 @@ function mapApiResponseToCustomer(api){
   const topDelivery = pickTopDelivery(api.delivery);
   return {
     phone: api.phone,
+    // ADDED 2026-09-07 — metrics.get_active_call_id(); the dcm.customer_calls
+    // row id the Action Panel's saveAction() PATCHes. null for a
+    // never-call-assigned, order-only customer — saveAction() blocks the
+    // save and shows saveNoCallIdToast rather than hitting a 404.
+    activeCallId: api.active_call_id != null ? api.active_call_id : null,
     name: api.name || (currentLang === 'bn' ? '(নাম পাওয়া যায়নি)' : '(name unavailable)'),
     tier: api.tier || 'red',
     addresses: (api.addresses && api.addresses.length)
@@ -2977,6 +3215,18 @@ function mapApiResponseToCustomer(api){
     // of collapsing to 0 ("worst possible") — renderIdentityHeader() below
     // renders null as a grey empty ring + "তথ্য নেই"/"N/A", not "0/100" red.
     reliabilityScore: api.reliability_score != null ? api.reliability_score : null,
+    // ADDED 2026-09-07 — reliability-score transparency context (see
+    // schemas.py CustomerProfileResponse) + how many of this customer's
+    // orders were agent-confirmed-on-a-call vs. self-service. Purely
+    // additive: the score formula itself is unchanged. Real distinct
+    // bn/en strings from the backend (not the single-language bnEn()
+    // duplicate-into-both-keys helper), same shape as interestedIn below.
+    reliabilityContext: { bn: api.reliability_score_context_bn || '', en: api.reliability_score_context_en || '' },
+    agentInitiatedOrderCount: api.agent_initiated_order_count || 0,
+    reliabilityLimitedDataNote: {
+      bn: api.reliability_score_limited_data_note_bn || '',
+      en: api.reliability_score_limited_data_note_en || '',
+    },
     consent: ai.consent_signal === 'do_not_call' ? 'donotcall' : (ai.consent_signal || null),
     interestedIn: { bn: ai.interested_in_bn || [], en: ai.interested_in_en || [] },
     badges: (api.badges || []).map(b => ({ icon: b.icon, color: b.color, label: enumLabel(b.label), filter: b.filter })),
@@ -3050,6 +3300,11 @@ function mapApiResponseToCustomer(api){
     orderRemarks: (api.order_remarks || []).map(r => ({
       invoice: r.invoice, dateRaw: r.date || '', note: r.note,
     })),
+    // ADDED 2026-09-08 — same shape/date convention as orderRemarks above,
+    // just the delivery-keyword-filtered subset (metrics.get_delivery_related_remarks()).
+    deliveryRelatedRemarks: (api.delivery_related_remarks || []).map(r => ({
+      invoice: r.invoice, dateRaw: r.date || '', note: r.note,
+    })),
     products: (api.products || []).map((p, i) => ({
       img: '',
       name: bnEn(p.product_name || ''),
@@ -3082,6 +3337,12 @@ function mapApiResponseToCustomer(api){
       totalQty: (api.delivery_summary && api.delivery_summary.total_qty) || 0,
       damagedQty: (api.delivery_summary && api.delivery_summary.damaged_qty) || 0,
       damageRatePct: (api.delivery_summary && api.delivery_summary.damage_rate_pct) || 0,
+      // ADDED 2026-09-08 — metrics.compute_shipping_delay_pct(). null (not
+      // 0) means no order has both ShippingDate/ShippedAt yet — kept null
+      // here (not defaulted to 0) so the delay-pct KPI card can render
+      // "তথ্য নেই"/"N/A" instead of a misleading "0% delayed".
+      delayPct: (api.delivery_summary && api.delivery_summary.delay_pct) != null ? api.delivery_summary.delay_pct : null,
+      hasPartialDelivery: !!(api.delivery_summary && api.delivery_summary.has_partial_delivery),
     },
     pickupBreakdown: (api.pickup_breakdown || []).map(x => ({ label: bnEn(x.label), pct: x.pct })),
     // total_sales/total_invoices/total_qty/total_returns: per-category detail
@@ -3178,6 +3439,7 @@ function loadCustomer(key){
   ordersShowAll = false;
   productsShowAll = false;
   orderRemarksShowAll = false;
+  deliveryOrdersShowAll = false;
   // The search box only exists inside the Customer 360° sub-item view, so
   // this is normally already true by the time a search resolves — kept as
   // a safety net so a loaded result is never hidden behind sidebar state.
@@ -3254,23 +3516,97 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('ring-2','ring-[#EA580C]'));
       btn.classList.add('ring-2','ring-[#EA580C]');
-      selectedStatus = btn.textContent;
+      // Read the stable backend status code (data-status-code), not
+      // btn.textContent — textContent is the localized label and flips
+      // with toggleLanguage(), which would send Bengali text as `status`.
+      selectedStatus = btn.dataset.statusCode;
     });
   });
 });
-function saveAction(){
-  toggleActionPanel();
-  document.getElementById('remark-box').value = '';
-  showToast(LABELS[currentLang].saveToast);
+
+// CRITICAL FIX 2026-09-07 — this used to just close the drawer and show a
+// canned toast with NO fetch() call at all, so nothing an agent "saved"
+// ever reached the database. Now PATCHes the real backend row via POST
+// /customer-calls/{id}/update (app/routers/calls.py), which already
+// existed and was simply never wired up.
+async function saveAction(){
+  const btn = document.getElementById('save-action-btn');
+  if (btn.disabled) return; // guards a double-click firing two writes
+
+  if (!selectedStatus) {
+    showToast(LABELS[currentLang].saveNoStatusToast, true);
+    return;
+  }
+  const customer = CUSTOMERS[currentCustomerKey];
+  const callId = customer && customer.activeCallId;
+  if (!callId) {
+    showToast(LABELS[currentLang].saveNoCallIdToast, true);
+    return;
+  }
+
+  const remarkBox = document.getElementById('remark-box');
+  const followupInput = document.getElementById('followup-date-input');
+  const btnLabel = document.getElementById('save-action-btn-label');
+  const originalLabel = btnLabel.textContent;
+
+  btn.disabled = true;
+  btn.classList.add('opacity-70');
+  btnLabel.textContent = LABELS[currentLang].saveSaving;
+
+  try {
+    const res = await fetch(`${API_BASE}/customer-calls/${callId}/update`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({
+        status: selectedStatus,
+        remark: remarkBox.value.trim() || null,
+        next_followup_date: followupInput.value || null,
+      }),
+    });
+
+    if (!res.ok) {
+      let detail = '';
+      try {
+        const body = await res.json();
+        if (body && body.detail) detail = `: ${body.detail}`;
+      } catch (_) { /* body wasn't JSON — ignore */ }
+      throw new Error(`status ${res.status}${detail}`);
+    }
+
+    // Success — close the drawer, reset its inputs, then reload this
+    // customer so the new status/remark/streak/badges are real, not
+    // assumed. Drawer stays open on failure (see catch below) so the
+    // agent's typed remark isn't silently lost.
+    toggleActionPanel();
+    remarkBox.value = '';
+    followupInput.value = '';
+    document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('ring-2','ring-[#EA580C]'));
+    selectedStatus = null;
+    showToast(LABELS[currentLang].saveToast);
+    const savedPhone = currentCustomerKey;
+    await loadCustomerFromAPI(savedPhone);
+    switchTab('calls'); // land on the tab that shows the entry just saved
+  } catch (err) {
+    console.error('POST /api/customer-calls/{id}/update failed:', err);
+    showToast(LABELS[currentLang].saveToastFail, true);
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('opacity-70');
+    btnLabel.textContent = originalLabel;
+  }
 }
 
 /* ============ Toast / clipboard ============ */
-function showToast(text){
+function showToast(text, isError){
   const toast = document.getElementById('toast');
   document.getElementById('toast-text').textContent = text;
+  // isError tints the toast red instead of the default slate — style set
+  // inline (not a class) so clearing it ('') falls straight back to the
+  // bg-slate-800 Tailwind class already on the element.
+  toast.style.backgroundColor = isError ? '#B23A2E' : '';
   toast.classList.remove('hidden');
   toast.style.opacity = '1';
-  setTimeout(() => { toast.style.opacity = '0'; setTimeout(()=>toast.classList.add('hidden'), 250); }, 1800);
+  setTimeout(() => { toast.style.opacity = '0'; setTimeout(()=>toast.classList.add('hidden'), 250); }, isError ? 3000 : 1800);
 }
 function copyText(text){
   navigator.clipboard.writeText(text).then(() => showToast(LABELS[currentLang].copyToast));

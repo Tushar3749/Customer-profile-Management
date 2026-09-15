@@ -150,7 +150,29 @@ def get_order_rows(phone: str) -> list[dict]:
     frontend's renderDeliveryTimeline() reads as `t[s.key]` truthy and
     therefore marks the "Delivered" step as done. CreationDate is NOT
     wrapped the same way — verified 0 blank rows out of 5.8M, so there is
-    no equivalent bug there today."""
+    no equivalent bug there today.
+
+    CONFIRMED FIX 2026-09-08 — DeliveryID also needed _trim(): verified
+    live, ~30% of populated DeliveryID values (431,804 of 1,430,682) carry
+    the same leading/trailing tab/CR/LF/NBSP padding as Invoice/ProductSKU
+    above. Went unnoticed until now because this column was only ever
+    shown buried in the order-detail modal; the Delivery tab's new
+    prominent tracking-ID card (with a copy button) is the first place a
+    stray leading tab would actually corrupt what an agent reads out loud
+    or copies to a customer.
+
+    CONFIRMED FIX 2026-09-09 — DeliveryPartner/PickUpLocation also need
+    semantic normalization on top of _trim(), not just whitespace
+    cleanup: real rows spell the SAME courier/warehouse multiple distinct
+    ways (verified live: 'Stead Fast' 2,092,178 rows + 'Steadfast'
+    1,979,204 rows are one company; 'Banasree Warehouse' 1,414,955 +
+    'Banasree' 567,399 are one warehouse). Every place that reads these
+    two columns — this per-order query, get_delivery_performance()'s
+    courier chart/success-rate, and get_pickup_location_breakdown() — now
+    runs through the same _courier_case()/_pickup_location_case() mapping
+    so a customer's per-order courier/pickup text always matches what the
+    aggregate chart/summary say, instead of three independently-guessed
+    spellings of the same real thing."""
     return fetch_all(
         f"""
         SELECT {_trim('Invoice')} AS Invoice,
@@ -162,12 +184,12 @@ def get_order_rows(phone: str) -> list[dict]:
                {_trim('ProductSKU')} AS ProductSKU,
                ProductQty, UnitPrice, TotalPrice,
                DeliveryFee, PaymentsPaidAmount, DueAmount,
-               {_trim('DeliveryPartner')} AS DeliveryPartner,
-               DeliveryID,
+               {_courier_case(_trim('DeliveryPartner'))} AS DeliveryPartner,
+               {_trim('DeliveryID')} AS DeliveryID,
                {_trim('PaymentMethod')} AS PaymentMethod,
                CancelledFlaggedReason,
                {_trim('DeliveryPartnerStatus')} AS DeliveryPartnerStatus,
-               {_trim('PickUpLocation')} AS PickUpLocation,
+               {_pickup_location_case(_trim('PickUpLocation'))} AS PickUpLocation,
                CancelledReturnedDamagedQty,
                CustomerName, CustomerAddress
         FROM Test.dbo.TestMaster
@@ -348,6 +370,75 @@ def get_order_remarks(phone: str, limit: int = 10) -> list[dict]:
                 })
     remarks.sort(key=lambda r: r['date'] or dt.date.min, reverse=True)
     return remarks[:limit]
+
+
+# ADDED 2026-09-08 — Delivery tab: which of a customer's remarks are
+# specifically about delivery (courier behavior, call-before-delivery
+# requests, address/timing complaints), not just any note. English
+# keywords are wrapped in \b (word-boundary) so e.g. "call" doesn't match
+# inside "recall"/"called"; Bengali keywords are plain substrings instead
+# — verified live that real remarks use compound words with no space
+# ("সময়মতো দাও"), where \b between সময় and মতো never fires because both
+# sides are Unicode word characters, so a Bengali \b match would silently
+# miss the exact kind of note this is meant to catch.
+_DELIVERY_KEYWORDS_EN = ['delivery', 'deliver', 'call', 'address', 'courier', 'shipment', 'ship']
+_DELIVERY_KEYWORDS_BN = ['ডেলিভারি', 'কল', 'ফোন', 'ঠিকানা', 'কুরিয়ার', 'সময়']
+_DELIVERY_KEYWORD_RE = re.compile(
+    '|'.join(
+        [rf'\b{re.escape(k)}\b' for k in _DELIVERY_KEYWORDS_EN]
+        + [re.escape(k) for k in _DELIVERY_KEYWORDS_BN]
+    ),
+    re.IGNORECASE,
+)
+
+
+def get_delivery_related_remarks(phone: str, limit: int = 20) -> list[dict]:
+    """Subset of get_order_remarks() whose (already-cleaned) text mentions
+    delivery — a keyword filter on top of the existing cleaning pipeline,
+    not a separate query/noise-stripping pass, so this can never drift out
+    of sync with what _clean_remark_text() already treats as signal vs.
+    noise. Reads a much larger candidate pool (up to 1000 already-cleaned
+    remarks) than it returns, since delivery mentions are a minority of
+    all remarks."""
+    candidates = get_order_remarks(phone, limit=1000)
+    return [r for r in candidates if _DELIVERY_KEYWORD_RE.search(r['note'])][:limit]
+
+
+def compute_shipping_delay_pct(orders: list[dict]) -> float | None:
+    """% of this customer's orders where the courier actually shipped
+    (ShippedAt) LATER than the order's recorded ShippingDate — a real
+    shipping delay, distinct from get_avg_delivery_days() (which measures
+    ShippedAt -> DeliveredAt, transit time after shipping already
+    happened). Only counts orders where both dates are populated; None
+    (not 0) when no order has both — same "unknown, not 0" convention as
+    get_avg_delivery_days()/calculate_reliability_score(). Takes the
+    already-grouped `orders` list (group_orders_by_invoice() output) —
+    no extra query."""
+    with_both = [
+        o for o in orders
+        if o['timeline']['shipping_date'] and o['timeline']['shipped_at']
+    ]
+    if not with_both:
+        return None
+    delayed = sum(
+        1 for o in with_both
+        if (o['timeline']['shipped_at'] - o['timeline']['shipping_date']).days > 0
+    )
+    return round(delayed / len(with_both) * 100, 1)
+
+
+def has_partial_delivery(orders: list[dict]) -> bool:
+    """Whether ANY of this customer's orders has the courier's own
+    DeliveryPartnerStatus = 'partial_delivered' (CONFIRMED LIVE 2026-09-08
+    — real distinct values are 'delivered'/'pending'/'nan'/'in_review'/
+    'cancelled'/'partial_delivered'/'N/A'/'unknown', already a clean
+    lowercase-snake-case vocabulary, not a guess). A customer-satisfaction
+    risk signal distinct from the business `status` field. Takes the
+    already-grouped `orders` list — no extra query."""
+    return any(
+        (o.get('delivery_partner_status') or '').strip().lower() == 'partial_delivered'
+        for o in orders
+    )
 
 
 def get_core_metrics(phone: str) -> dict:
@@ -538,6 +629,58 @@ def compute_unreachable_streak(history_desc: list[dict]) -> int:
     return streak
 
 
+def get_active_call_id(phone: str) -> int | None:
+    """The dcm.customer_calls row the Action Panel's Save writes to.
+
+    CONFIRMED LIVE 2026-09-07 — customer_number is NOT unique in
+    dcm.customer_calls: a phone that's been re-imported/re-assigned across
+    successive distribution cycles has one row per cycle (verified up to
+    14 rows for a single phone). There's no FK anywhere that names one of
+    them "the" row for a customer, so "active" here means the most
+    recently created cycle — the same row get_call_stats()/
+    get_call_history_ordered() already treat as current via their
+    customer_number join, just resolved down to a single id instead of
+    aggregated across all of them. TODO: confirm with business whether a
+    still-open older cycle should ever take priority over a newer one."""
+    row = fetch_all(
+        """
+        SELECT TOP 1 id
+        FROM dcm.dbo.customer_calls
+        WHERE customer_number = ?
+        ORDER BY created_at DESC, id DESC
+        """,
+        (phone,),
+    )
+    return row[0]['id'] if row else None
+
+
+def get_agent_initiated_order_count(phone: str) -> int:
+    """How many of this customer's orders were placed BY AN AGENT on a
+    call, not through self-service (website/app) — dcm.dbo.order_by_agent
+    is a separate table from Test.dbo.TestMaster's general order data,
+    populated only when an agent confirms an order during/after a call.
+
+    CONFIRMED LIVE 2026-09-07 — customer_number here is NOT whitespace/
+    NBSP-padded like some TestMaster text columns are (verified: 0 rows
+    differ between raw and LTRIM/RTRIM/CHAR(160)-cleaned length across the
+    whole table), so this skips the _trim() wrapper get_order_rows() etc.
+    need — added back if that ever stops holding true.
+
+    Used for reliability_score_context's low-call-data note: a customer at
+    0 here has call-response/reach metrics that don't reflect much of
+    their real ordering behavior, since most of it never went through a
+    call at all."""
+    row = fetch_all(
+        """
+        SELECT COUNT(*) AS AgentOrderCount
+        FROM dcm.dbo.order_by_agent
+        WHERE customer_number = ? AND order_status <> 'CANCELLED'
+        """,
+        (phone,),
+    )
+    return (row[0]['AgentOrderCount'] or 0) if row else 0
+
+
 def get_delivery_performance(phone: str) -> list[dict]:
     """CONFIRMED FIX 2026-08-30 — Total/SuccessRatePct previously counted
     raw TestMaster rows (one per product line item), not distinct
@@ -547,17 +690,31 @@ def get_delivery_performance(phone: str) -> list[dict]:
     toward whichever invoices happen to have more line items. Now uses
     COUNT(DISTINCT ...Invoice) in both numerator and denominator, same
     pattern as get_core_metrics()'s CancelRatePct. DeliveryPartner is also
-    now generically trimmed — see _trim()/get_order_rows()."""
-    partner, inv = _trim('DeliveryPartner'), _trim('Invoice')
+    now generically trimmed — see _trim()/get_order_rows().
+
+    CONFIRMED FIX 2026-09-09 — GROUP BY was on the raw trimmed
+    DeliveryPartner text, so 'Stead Fast' and 'Steadfast' (the same real
+    courier, see _courier_case()) landed in two separate rows, each with
+    its own — wrong — SuccessRatePct computed from only half the
+    customer's real deliveries with that courier. Grouping in a subquery
+    by the normalized label (same pattern as _get_breakdown_with_detail()
+    below) fixes this AND makes this the one place pickTopDelivery() /
+    the courier chart / the delivery-summary sentence on the frontend all
+    read from — they all consume this same function's output already, so
+    normalizing here alone fixes every one of them at once."""
+    partner_label, inv = _courier_case(_trim('DeliveryPartner')), _trim('Invoice')
     rows = fetch_all(
         f"""
-        SELECT {partner} AS DeliveryPartner,
-          COUNT(DISTINCT {inv}) AS Total,
-          COUNT(DISTINCT CASE WHEN Status = 'Delivered' THEN {inv} END) * 100.0
-            / NULLIF(COUNT(DISTINCT {inv}), 0) AS SuccessRatePct
-        FROM Test.dbo.TestMaster
-        WHERE CustomerPhoneNumber = ? AND DeliveryPartner IS NOT NULL
-        GROUP BY {partner}
+        SELECT DeliveryPartner,
+          COUNT(DISTINCT Invoice) AS Total,
+          COUNT(DISTINCT CASE WHEN Status = 'Delivered' THEN Invoice END) * 100.0
+            / NULLIF(COUNT(DISTINCT Invoice), 0) AS SuccessRatePct
+        FROM (
+          SELECT {inv} AS Invoice, {partner_label} AS DeliveryPartner, Status
+          FROM Test.dbo.TestMaster
+          WHERE CustomerPhoneNumber = ? AND DeliveryPartner IS NOT NULL
+        ) t
+        GROUP BY DeliveryPartner
         """,
         (phone,),
     )
@@ -570,18 +727,21 @@ def get_delivery_performance(phone: str) -> list[dict]:
     return rows
 
 
-def _get_breakdown(phone: str, column: str) -> list[dict]:
-    """Simple percentage-of-invoices breakdown for a raw TestMaster column
-    with no category normalization — used by get_pickup_location_breakdown()
-    only. Payment method and channel have their own real-category CASE
-    mapping and per-category detail metrics (get_payment_breakdown()/
-    get_channel_breakdown() below), so they no longer share this helper."""
+def _get_breakdown(phone: str, column: str, case_builder=None) -> list[dict]:
+    """Percentage-of-invoices breakdown for a raw TestMaster column,
+    optionally normalized through a CASE-mapping `case_builder` (same
+    signature as _payment_method_case()/_channel_case()/
+    _pickup_location_case() below) before grouping — used by
+    get_pickup_location_breakdown() only; payment method and channel have
+    their own richer per-category-detail helper
+    (_get_breakdown_with_detail()) instead of this one."""
     inv, col = _trim('Invoice'), _trim(column)
+    label_expr = case_builder(col) if case_builder else col
     rows = fetch_all(
         f"""
         SELECT Label, COUNT(*) * 100.0 / SUM(COUNT(*)) OVER () AS Pct
         FROM (
-            SELECT DISTINCT {inv} AS Invoice, {col} AS Label
+            SELECT DISTINCT {inv} AS Invoice, {label_expr} AS Label
             FROM Test.dbo.TestMaster
             WHERE CustomerPhoneNumber = ? AND {column} IS NOT NULL
               AND {col} <> ''
@@ -600,8 +760,53 @@ def get_pickup_location_breakdown(phone: str) -> list[dict]:
     """Which warehouse (PickUpLocation) this customer's orders most often
     ship from, by % of invoices. CONFIRMED 2026-08-30 — 62.5% populated
     table-wide, well worth surfacing; District/SUB_DISTRICT/ThanaName were
-    checked at the same time and are 0-5% populated, so those are skipped."""
-    return _get_breakdown(phone, 'PickUpLocation')
+    checked at the same time and are 0-5% populated, so those are skipped.
+
+    CONFIRMED FIX 2026-09-09 — now runs through _pickup_location_case()
+    (was ungrouped raw text before), so 'Banasree Warehouse'/'Banasree'
+    no longer show as two separate rows for the same real warehouse."""
+    return _get_breakdown(phone, 'PickUpLocation', _pickup_location_case)
+
+
+# CONFIRMED LIVE 2026-09-09 — real DeliveryPartner has 45 distinct trimmed
+# spellings; these are the ones verified to be the SAME real courier
+# written multiple ways (not a guess about all 45): 'Stead Fast'
+# (2,092,178 rows) + 'Steadfast' (1,979,204 rows) — together the single
+# largest courier by volume, previously split into two GROUP BY buckets
+# wherever DeliveryPartner was grouped raw; 'HorseECourier'/'Horse E
+# Courier'/'Horse E-Courier' (3 spacing/hyphenation variants, 63,405 rows
+# combined); 'GB-Express'/'GB Express' (a punctuation variant). Deliberately
+# NOT merged: 'Steadfast Express'/'Steadfast Chittagong' (real, distinct
+# service tiers/branches of the same company, not spelling noise) and
+# 'e-courier' (a different, unrelated courier company despite the
+# superficially similar name to 'Horse E-Courier'). Anything not covered
+# falls through unchanged (ELSE {trimmed_col}).
+def _courier_case(trimmed_col: str) -> str:
+    return f"""
+        CASE
+          WHEN {trimmed_col} IN ('Stead Fast', 'Steadfast') THEN 'Steadfast'
+          WHEN {trimmed_col} IN ('HorseECourier', 'Horse E Courier', 'Horse E-Courier') THEN 'Horse E-Courier'
+          WHEN {trimmed_col} IN ('GB-Express', 'GB Express') THEN 'GB Express'
+          ELSE {trimmed_col}
+        END
+    """
+
+
+# CONFIRMED LIVE 2026-09-09 — real PickUpLocation has 11 distinct trimmed
+# values; 'Banasree Warehouse' (1,414,955 rows) + 'Banasree' (567,399
+# rows) are the same warehouse, same pattern for 'Chapainawabganj
+# Warehouse'/'Chapainawabganj'. Deliberately NOT merged: the '(Returnable)'
+# variants ('Amulia Warehouse (Returnable)', 'Chittagong (Returnable)') —
+# that qualifier marks a genuinely different pickup flow (return
+# processing), not a spelling variant of the plain location.
+def _pickup_location_case(trimmed_col: str) -> str:
+    return f"""
+        CASE
+          WHEN {trimmed_col} IN ('Banasree Warehouse', 'Banasree') THEN N'Banasree Warehouse'
+          WHEN {trimmed_col} IN ('Chapainawabganj Warehouse', 'Chapainawabganj') THEN N'Chapainawabganj Warehouse'
+          ELSE {trimmed_col}
+        END
+    """
 
 
 # CONFIRMED 2026-08-31 — real PaymentMethod values for this table have 31

@@ -67,6 +67,12 @@ def get_customer_profile(phone: str, agent: dict = Depends(get_current_agent)):
     payment_rows = metrics.get_payment_breakdown(normalized)
     call_status_rows = metrics.get_call_status_breakdown(normalized)
 
+    delivery_related_remarks = metrics.get_delivery_related_remarks(normalized)
+    # Both computed from the already-grouped `orders` list above — no
+    # extra query for either.
+    damage_rate['delay_pct'] = metrics.compute_shipping_delay_pct(orders)
+    damage_rate['has_partial_delivery'] = metrics.has_partial_delivery(orders)
+
     recency_days = _days_since(core.get('LastOrderDate'))
     tenure_days = _days_since(core.get('FirstOrderDate'))
 
@@ -91,6 +97,26 @@ def get_customer_profile(phone: str, agent: dict = Depends(get_current_agent)):
     )
 
     cached_summary = ai_summary.get_cached_summary(normalized)
+    active_call_id = metrics.get_active_call_id(normalized)
+
+    agent_initiated_order_count = metrics.get_agent_initiated_order_count(normalized)
+    # CONFIRMED 2026-09-07 — context text only, the reliability_score
+    # formula above is untouched. The limited-data note is additive
+    # (shown alongside, not instead of, the base context) and only fires
+    # when this customer has literally zero agent-confirmed orders, i.e.
+    # the reach/reliability numbers above are computed from a call history
+    # that doesn't reflect most (or any) of their real ordering.
+    reliability_score_limited_data_note_bn = None
+    reliability_score_limited_data_note_en = None
+    if agent_initiated_order_count == 0:
+        reliability_score_limited_data_note_bn = (
+            'এই গ্রাহক মূলত সরাসরি ওয়েবসাইট/অ্যাপ থেকে অর্ডার করেন, '
+            'কল-ভিত্তিক ডেটা সীমিত হতে পারে।'
+        )
+        reliability_score_limited_data_note_en = (
+            'This customer mostly orders directly via website/app — '
+            'call-based data may be limited.'
+        )
 
     return CustomerProfileResponse(
         phone=normalized,
@@ -110,9 +136,15 @@ def get_customer_profile(phone: str, agent: dict = Depends(get_current_agent)):
         # untouched.
         segment=segment,
         reliability_score=reliability_score,
+        reliability_score_context_bn='এই স্কোর মূলত কল-রেসপন্স ও ডেলিভারি সাফল্যের ভিত্তিতে হিসাব করা।',
+        reliability_score_context_en='This score is calculated mainly from call response and delivery success.',
+        agent_initiated_order_count=agent_initiated_order_count,
+        reliability_score_limited_data_note_bn=reliability_score_limited_data_note_bn,
+        reliability_score_limited_data_note_en=reliability_score_limited_data_note_en,
         avg_delivery_days=avg_delivery_days,
         order_frequency_category=order_frequency_category,
         average_order_gap_days=avg_order_gap_days,
+        active_call_id=active_call_id,
         tier=tier,
         badges=badges,
         metrics={
@@ -153,6 +185,10 @@ def get_customer_profile(phone: str, agent: dict = Depends(get_current_agent)):
         order_remarks=[
             {'invoice': r['invoice'], 'date': r['date'], 'note': r['note']}
             for r in order_remarks
+        ],
+        delivery_related_remarks=[
+            {'invoice': r['invoice'], 'date': r['date'], 'note': r['note']}
+            for r in delivery_related_remarks
         ],
         products=[
             {

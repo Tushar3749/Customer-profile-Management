@@ -155,6 +155,13 @@ class DeliverySummary(BaseModel):
     total_qty: float = 0
     damaged_qty: float = 0
     damage_rate_pct: float = 0
+    # ADDED 2026-09-08 — metrics.compute_shipping_delay_pct(). None (not 0)
+    # when no order has both ShippingDate and ShippedAt populated — see
+    # that function's docstring for the "unknown, not 0" reasoning.
+    delay_pct: Optional[float] = None
+    # metrics.has_partial_delivery() — any order with courier status
+    # 'partial_delivered'.
+    has_partial_delivery: bool = False
 
 
 class BreakdownItem(BaseModel):
@@ -226,6 +233,24 @@ class CustomerProfileResponse(BaseModel):
     # Per-order Order.due_amount (a single real invoice's due) is separate
     # and unaffected.
     reliability_score: Optional[int] = None
+    # ADDED 2026-09-07 — transparency context for reliability_score, NOT a
+    # change to the score formula itself (still reach_rate*0.4 +
+    # delivery_rate*0.4 + (100-cancel_rate)*0.2, see
+    # metrics.calculate_reliability_score()). Always present when
+    # reliability_score is; explains what the number is actually measuring
+    # so an agent doesn't read it as a general trustworthiness score.
+    reliability_score_context_bn: Optional[str] = None
+    reliability_score_context_en: Optional[str] = None
+    # metrics.get_agent_initiated_order_count() — how many of this
+    # customer's orders were confirmed by an agent on a call (dcm.dbo.
+    # order_by_agent), as opposed to self-service website/app orders that
+    # never generated a call. 0 here means reach/reliability data is
+    # thin relative to the customer's real order volume, which is what
+    # reliability_score_limited_data_note_bn/en (set only when this is 0)
+    # calls out.
+    agent_initiated_order_count: int = 0
+    reliability_score_limited_data_note_bn: Optional[str] = None
+    reliability_score_limited_data_note_en: Optional[str] = None
     # CONFIRMED SOURCE 2026-09-01 — metrics.get_avg_delivery_days()
     # (ShippedAt -> DeliveredAt, per distinct invoice). None means no order
     # has both dates populated yet, not "0 days" — frontend must render
@@ -238,10 +263,20 @@ class CustomerProfileResponse(BaseModel):
     # orders to measure a gap between.
     order_frequency_category: Optional[str] = None
     average_order_gap_days: Optional[float] = None
+    # ADDED 2026-09-07 — metrics.get_active_call_id(). The dcm.customer_calls
+    # row id the frontend's Action Panel PATCHes via POST
+    # /customer-calls/{id}/update; None only when a phone has no
+    # customer_calls row at all (order-only customer, never call-assigned).
+    active_call_id: Optional[int] = None
     badges: list[Badge] = []
     metrics: Metrics
     orders: list[Order]
     order_remarks: list[OrderRemark] = []
+    # ADDED 2026-09-08 — metrics.get_delivery_related_remarks(): the subset
+    # of order_remarks above whose text specifically mentions delivery
+    # (courier, call-before-delivery, address, timing). Same OrderRemark
+    # shape, a filtered view rather than a separate source.
+    delivery_related_remarks: list[OrderRemark] = []
     products: list[ProductPreference]
     call_stats: CallStats
     calls: list[CallHistoryEntry]
