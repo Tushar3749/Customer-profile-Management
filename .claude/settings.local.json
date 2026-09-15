@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-CimInstance *)",
+      "PowerShell(& \"D:\\\\CustomerProfileManagement\\\\customer360-dashboard\\\\venv\\\\Scripts\\\\python.exe\" \"C:\\\\Users\\\\GBDATA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--CustomerProfileManagement-customer360-dashboard\\\\98c246ce-bdf9-41e3-a2ff-a866471e6ccf\\\\scratchpad\\\\diag6.py\")",
+      "PowerShell(& \"D:\\\\CustomerProfileManagement\\\\customer360-dashboard\\\\venv\\\\Scripts\\\\python.exe\" \"C:\\\\Users\\\\GBDATA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--CustomerProfileManagement-customer360-dashboard\\\\98c246ce-bdf9-41e3-a2ff-a866471e6ccf\\\\scratchpad\\\\diag7.py\")",
+      "PowerShell(& \"D:\\\\CustomerProfileManagement\\\\customer360-dashboard\\\\venv\\\\Scripts\\\\python.exe\" \"C:\\\\Users\\\\GBDATA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--CustomerProfileManagement-customer360-dashboard\\\\98c246ce-bdf9-41e3-a2ff-a866471e6ccf\\\\scratchpad\\\\check_response.py\")",
+      "PowerShell(Start-Process -FilePath \"D:\\\\CustomerProfileManagement\\\\customer360-dashboard\\\\start_backend.bat\" -WorkingDirectory \"D:\\\\CustomerProfileManagement\\\\customer360-dashboard\")",
+      "PowerShell(node \"C:\\\\Users\\\\GBDATA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--CustomerProfileManagement-customer360-dashboard\\\\98c246ce-bdf9-41e3-a2ff-a866471e6ccf\\\\scratchpad\\\\run_harness.js\")",
+      "PowerShell(& \"D:\\\\CustomerProfileManagement\\\\customer360-dashboard\\\\venv\\\\Scripts\\\\python.exe\" \"C:\\\\Users\\\\GBDATA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--CustomerProfileManagement-customer360-dashboard\\\\98c246ce-bdf9-41e3-a2ff-a866471e6ccf\\\\scratchpad\\\\check_statuses.py\")",
+      "PowerShell(node \"C:\\\\Users\\\\GBDATA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--CustomerProfileManagement-customer360-dashboard\\\\98c246ce-bdf9-41e3-a2ff-a866471e6ccf\\\\scratchpad\\\\run_harness.js\" 8801610054765)",
+      "PowerShell(node \"C:\\\\Users\\\\GBDATA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--CustomerProfileManagement-customer360-dashboard\\\\98c246ce-bdf9-41e3-a2ff-a866471e6ccf\\\\scratchpad\\\\run_harness.js\" 8801862648530)",
+      "PowerShell(& \"D:\\\\CustomerProfileManagement\\\\customer360-dashboard\\\\venv\\\\Scripts\\\\python.exe\" \"C:\\\\Users\\\\GBDATA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--CustomerProfileManagement-customer360-dashboard\\\\98c246ce-bdf9-41e3-a2ff-a866471e6ccf\\\\scratchpad\\\\debug_500.py\")",
+      "PowerShell(& \"D:\\\\CustomerProfileManagement\\\\customer360-dashboard\\\\venv\\\\Scripts\\\\python.exe\" \"C:\\\\Users\\\\GBDATA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--CustomerProfileManagement-customer360-dashboard\\\\98c246ce-bdf9-41e3-a2ff-a866471e6ccf\\\\scratchpad\\\\get_phones.py\")",
+      "PowerShell(node \"C:\\\\Users\\\\GBDATA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--CustomerProfileManagement-customer360-dashboard\\\\98c246ce-bdf9-41e3-a2ff-a866471e6ccf\\\\scratchpad\\\\sweep.js\")",
+      "PowerShell(& \"D:\\\\CustomerProfileManagement\\\\customer360-dashboard\\\\venv\\\\Scripts\\\\python.exe\" \"C:\\\\Users\\\\GBDATA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--CustomerProfileManagement-customer360-dashboard\\\\98c246ce-bdf9-41e3-a2ff-a866471e6ccf\\\\scratchpad\\\\debug_500b.py\" 8801812215156 2>$null)",
+      "PowerShell(& \"D:\\\\CustomerProfileManagement\\\\customer360-dashboard\\\\venv\\\\Scripts\\\\python.exe\" \"C:\\\\Users\\\\GBDATA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--CustomerProfileManagement-customer360-dashboard\\\\98c246ce-bdf9-41e3-a2ff-a866471e6ccf\\\\scratchpad\\\\debug_500b.py\" 8801711113728 2>$null)",
+      "PowerShell(& \"D:\\\\CustomerProfileManagement\\\\customer360-dashboard\\\\venv\\\\Scripts\\\\python.exe\" \"C:\\\\Users\\\\GBDATA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--CustomerProfileManagement-customer360-dashboard\\\\98c246ce-bdf9-41e3-a2ff-a866471e6ccf\\\\scratchpad\\\\debug_500b.py\" 8801812215156)",
+      "PowerShell(& \"D:\\\\CustomerProfileManagement\\\\customer360-dashboard\\\\venv\\\\Scripts\\\\python.exe\" \"C:\\\\Users\\\\GBDATA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--CustomerProfileManagement-customer360-dashboard\\\\98c246ce-bdf9-41e3-a2ff-a866471e6ccf\\\\scratchpad\\\\debug_500b.py\" 8801711113728)",
+      "PowerShell(& \"D:\\\\CustomerProfileManagement\\\\customer360-dashboard\\\\venv\\\\Scripts\\\\python.exe\" \"C:\\\\Users\\\\GBDATA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--CustomerProfileManagement-customer360-dashboard\\\\98c246ce-bdf9-41e3-a2ff-a866471e6ccf\\\\scratchpad\\\\check_notes.py\" 2>$null)",
+      "PowerShell(& \"D:\\\\CustomerProfileManagement\\\\customer360-dashboard\\\\venv\\\\Scripts\\\\python.exe\" \"C:\\\\Users\\\\GBDATA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--CustomerProfileManagement-customer360-dashboard\\\\98c246ce-bdf9-41e3-a2ff-a866471e6ccf\\\\scratchpad\\\\verify_row.py\" 2>$null)",
+      "PowerShell(node \"C:\\\\Users\\\\GBDATA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--CustomerProfileManagement-customer360-dashboard\\\\98c246ce-bdf9-41e3-a2ff-a866471e6ccf\\\\scratchpad\\\\run_harness.js\" 8801708166233)",
+      "PowerShell(& \"D:\\\\CustomerProfileManagement\\\\customer360-dashboard\\\\venv\\\\Scripts\\\\python.exe\" \"C:\\\\Users\\\\GBDATA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--CustomerProfileManagement-customer360-dashboard\\\\98c246ce-bdf9-41e3-a2ff-a866471e6ccf\\\\scratchpad\\\\find_phone.py\" 2>$null)",
+      "PowerShell(& \"D:\\\\CustomerProfileManagement\\\\customer360-dashboard\\\\venv\\\\Scripts\\\\python.exe\" \"C:\\\\Users\\\\GBDATA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--CustomerProfileManagement-customer360-dashboard\\\\98c246ce-bdf9-41e3-a2ff-a866471e6ccf\\\\scratchpad\\\\find_phone2.py\" 2>$null)",
+      "PowerShell(Get-Item \"D:\\\\CustomerProfileManagement\\\\customer360-dashboard\\\\frontend\\\\GhorerBazar_Customer360_Dashboard_v2.html\" | Select-Object Length; \\(Get-Content \"D:\\\\CustomerProfileManagement\\\\customer360-dashboard\\\\frontend\\\\GhorerBazar_Customer360_Dashboard_v2.html\" | Measure-Object -Line\\).Lines)",
+      "PowerShell(Get-Command *)",
+      "PowerShell(npx --yes playwright --version 2>&1 | Select-Object -First 5)",
+      "PowerShell(Start-Process -FilePath \"python\" -ArgumentList \"-m\",\"http.server\",\"8791\" -WorkingDirectory \"D:\\\\CustomerProfileManagement\\\\customer360-dashboard\\\\frontend\" -WindowStyle Hidden -PassThru | Select-Object -ExpandProperty Id)",
+      "PowerShell(Start-Sleep -Seconds 1; Invoke-WebRequest -Uri \"http://127.0.0.1:8791/GhorerBazar_Customer360_Dashboard_v2.html\" -UseBasicParsing | Select-Object -ExpandProperty StatusCode)",
+      "PowerShell(node \"C:\\\\Users\\\\GB DATA\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--CustomerProfileManagement-customer360-dashboard\\\\fa7f24a6-ae41-4212-908b-8e7106e803a6\\\\scratchpad\\\\test_calls.mjs\")",
+      "PowerShell(Stop-Process *)",
+      "PowerShell(py *)",
+      "PowerShell(\\(Resolve-Path \"frontend\\\\GhorerBazar_Customer360_Dashboard_v2.html\"\\).Path)",
+      "PowerShell(node -v 2>&1 | Out-String)",
+      "PowerShell(& \"C:\\\\Program Files\\\\Git\\\\cmd\\\\git.exe\" --version)",
+      "PowerShell(& \"C:\\\\Program Files\\\\Git\\\\cmd\\\\git.exe\" -C \"D:\\\\CustomerProfileManagement\\\\customer360-dashboard\" status 2>&1)"
+    ]
+  }
+}

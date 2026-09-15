@@ -1,0 +1,13 @@
+# Backend runs locally, not on Vercel — keep it out of the deployment
+# build/upload entirely so nothing here is ever mistaken for a Python
+# serverless function or triggers a pip install.
+app/
+migrations/
+venv/
+requirements.txt
+check_cors.py
+run_all.bat
+start_backend.bat
+start_frontend.bat
+CLAUDE.md
+.env.example
